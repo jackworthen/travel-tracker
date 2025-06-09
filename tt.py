@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple
 class TravelCalendar:
     def __init__(self, root):
         self.root = root
-        self.root.title("Travel Calendar Tracker")
+        self.root.title("Travel Tracker")
         self.root.geometry("600x460")
         self.root.configure(bg='#f0f0f0')
         
@@ -46,12 +46,7 @@ class TravelCalendar:
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(1, weight=1)
-        
-        # Title
-        title_label = ttk.Label(main_frame, text="Travel Calendar Tracker", 
-                               font=('Arial', 16, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
-        
+             
         # Left panel for controls
         control_frame = ttk.LabelFrame(main_frame, text="Travel Entry", padding="10")
         control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
