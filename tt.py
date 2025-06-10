@@ -228,7 +228,7 @@ class ModernTravelCalendar:
         date_section.columnconfigure(0, weight=1)
         
         # Start date
-        tk.Label(date_section, text="Start Date", 
+        tk.Label(date_section, text="Departure Date", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
@@ -237,7 +237,7 @@ class ModernTravelCalendar:
         self.start_date_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         
         # End date
-        tk.Label(date_section, text="End Date", 
+        tk.Label(date_section, text="Return Date", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).grid(row=2, column=0, sticky=tk.W, pady=(0, 5))
