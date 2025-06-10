@@ -629,6 +629,55 @@ class ModernTravelCalendar:
                                   background='#fef3c7', 
                                   foreground='#d97706')
     
+    def update_records_display_filtered(self, records_tree, filter_vars):
+        """Update the travel records display with filtering applied"""
+        # Clear existing items
+        for item in records_tree.get_children():
+            records_tree.delete(item)
+        
+        # Configure color tags
+        self.configure_treeview_tags(records_tree)
+        
+        # Get enabled filters
+        enabled_filters = []
+        if filter_vars['past'].get():
+            enabled_filters.append('past')
+        if filter_vars['current'].get():
+            enabled_filters.append('current')
+        if filter_vars['future'].get():
+            enabled_filters.append('future')
+        
+        # If no filters are enabled, show nothing
+        if not enabled_filters:
+            return
+        
+        # Filter and sort records
+        filtered_records = []
+        for record in self.travel_records:
+            record_type = self.get_record_color_tag(record)
+            if record_type in enabled_filters:
+                filtered_records.append(record)
+        
+        # Sort by start date (most recent first)
+        sorted_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=True)
+        
+        # Add filtered records to tree
+        for record in sorted_records:
+            # Truncate comment if it's too long for display
+            comment = record.get('comment', '')
+            if len(comment) > 50:
+                comment = comment[:47] + "..."
+            
+            # Get the appropriate color tag
+            color_tag = self.get_record_color_tag(record)
+            
+            records_tree.insert('', tk.END, values=(
+                record['start_date'],
+                record['end_date'],
+                record['location'],
+                comment
+            ), tags=(color_tag,))
+    
     def update_records_display(self, records_tree):
         """Update the travel records display in the report window"""
         # Clear existing items
@@ -935,25 +984,47 @@ class ModernTravelCalendar:
         tk.Label(locations_card, text="Unique Locations Visited", font=('Segoe UI', 10),
                 bg=self.colors['accent'], fg='white').pack()
         
-        # Legend
-        legend_frame = ttk.LabelFrame(main_container, text="🎨 Status Legend", style='Card.TLabelframe')
-        legend_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        # Filter section
+        filter_frame = ttk.LabelFrame(main_container, text="🔍 Record Filter", style='Card.TLabelframe')
+        filter_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         
-        legend_inner = tk.Frame(legend_frame, bg=self.colors['surface'])
-        legend_inner.pack(fill=tk.X)
+        filter_inner = tk.Frame(filter_frame, bg=self.colors['surface'])
+        filter_inner.pack(fill=tk.X)
         
-        legend_items = [
-            ("Past Travel", "#f1f5f9", "#64748b"),
-            ("Current Travel", "#dcfce7", "#15803d"),
-            ("Future Travel", "#fef3c7", "#d97706")
+        # Create filter variables (all enabled by default)
+        filter_vars = {
+            'past': tk.BooleanVar(value=True),
+            'current': tk.BooleanVar(value=True),
+            'future': tk.BooleanVar(value=True)
+        }
+        
+        filter_items = [
+            ("Past Travel", "#f1f5f9", "#64748b", filter_vars['past']),
+            ("Current Travel", "#dcfce7", "#15803d", filter_vars['current']),
+            ("Future Travel", "#fef3c7", "#d97706", filter_vars['future'])
         ]
         
-        for i, (text, bg_color, fg_color) in enumerate(legend_items):
-            legend_label = tk.Label(legend_inner, text=f"  {text}  ",
+        # Create filter checkboxes with labels
+        for i, (text, bg_color, fg_color, var) in enumerate(filter_items):
+            # Container for checkbox and label
+            filter_container = tk.Frame(filter_inner, bg=self.colors['surface'])
+            filter_container.pack(side=tk.LEFT, padx=(0, 30))
+            
+            # Checkbox to the left of label
+            checkbox = tk.Checkbutton(filter_container, 
+                                    variable=var,
+                                    bg=self.colors['surface'],
+                                    activebackground=self.colors['surface'],
+                                    relief='flat',
+                                    command=lambda: self.update_records_display_filtered(records_tree, filter_vars))
+            checkbox.pack(side=tk.LEFT, padx=(0, 2))
+            
+            # Color-coded label to the right of checkbox
+            filter_label = tk.Label(filter_container, text=f"  {text}  ",
                                   bg=bg_color, fg=fg_color,
                                   relief="solid", borderwidth=1,
                                   font=('Segoe UI', 10))
-            legend_label.pack(side=tk.LEFT, padx=(0, 15))
+            filter_label.pack(side=tk.LEFT)
         
         # Travel records
         records_frame = ttk.LabelFrame(main_container, text="📋 Travel Records", style='Card.TLabelframe')
@@ -993,8 +1064,8 @@ class ModernTravelCalendar:
         records_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
-        # Update records display
-        self.update_records_display(records_tree)
+        # Update records display with filtering
+        self.update_records_display_filtered(records_tree, filter_vars)
         
         # Action buttons
         buttons_frame = tk.Frame(main_container, bg=self.colors['background'])
