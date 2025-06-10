@@ -6,12 +6,30 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 
-class TravelCalendar:
+class ModernTravelCalendar:
     def __init__(self, root):
         self.root = root
         self.root.title("Travel Tracker")
-        self.root.geometry("600x460")
-        self.root.configure(bg='#f0f0f0')
+        self.root.geometry("1000x800")
+        
+        # Modern color scheme
+        self.colors = {
+            'primary': '#2563eb',      # Modern blue
+            'primary_light': '#3b82f6',
+            'primary_dark': '#1d4ed8',
+            'secondary': '#64748b',    # Slate gray
+            'accent': '#06b6d4',       # Cyan
+            'success': '#10b981',      # Green
+            'warning': '#f59e0b',      # Amber
+            'danger': '#ef4444',       # Red
+            'background': '#f8fafc',   # Light gray
+            'surface': '#ffffff',      # White
+            'text': '#1e293b',         # Dark gray
+            'text_light': '#64748b',   # Light gray
+            'border': '#e2e8f0'        # Light border
+        }
+        
+        self.root.configure(bg=self.colors['background'])
         
         # Data storage
         self.data_file = "travel_data.json"
@@ -32,86 +50,329 @@ class TravelCalendar:
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
         
+        self.setup_modern_styles()
         self.setup_ui()
         self.update_calendar_display()
         self.update_location_dropdown()
     
+    def setup_modern_styles(self):
+        """Configure modern ttk styles"""
+        style = ttk.Style()
+        
+        # Configure modern button styles
+        style.configure('Modern.TButton',
+                       background=self.colors['primary'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=(12, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Modern.TButton',
+                 background=[('active', self.colors['primary_light']),
+                           ('pressed', self.colors['primary_dark'])],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Secondary.TButton',
+                       background=self.colors['secondary'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=(12, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Secondary.TButton',
+                 background=[('active', '#475569'),
+                           ('pressed', '#334155')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Success.TButton',
+                       background=self.colors['success'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=(12, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Success.TButton',
+                 background=[('active', '#059669'),
+                           ('pressed', '#047857')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Danger.TButton',
+                       background=self.colors['danger'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=(12, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Danger.TButton',
+                 background=[('active', '#dc2626'),
+                           ('pressed', '#b91c1c')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Warning.TButton',
+                       background=self.colors['warning'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=(12, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Warning.TButton',
+                 background=[('active', '#d97706'),
+                           ('pressed', '#b45309')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        # Calendar button styles
+        style.configure('Calendar.TButton',
+                       background=self.colors['surface'],
+                       foreground=self.colors['text'],
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(8, 8),
+                       font=('Segoe UI', 10))
+        style.map('Calendar.TButton',
+                 background=[('active', self.colors['primary_light']),
+                           ('pressed', self.colors['primary'])])
+        
+        style.configure('CalendarTravel.TButton',
+                       background=self.colors['accent'],
+                       foreground=self.colors['text'],  # Changed from 'white' to dark text
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(8, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('CalendarTravel.TButton',
+                 background=[('active', '#0891b2'),
+                           ('pressed', '#0e7490')],
+                 foreground=[('active', self.colors['text']),
+                           ('pressed', self.colors['text'])])
+        
+        style.configure('CalendarSelected.TButton',
+                       background=self.colors['warning'],
+                       foreground=self.colors['text'],  # Changed from 'white' to dark text
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(8, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('CalendarSelected.TButton',
+                 background=[('active', '#d97706'),
+                           ('pressed', '#b45309')],
+                 foreground=[('active', self.colors['text']),
+                           ('pressed', self.colors['text'])])
+        
+        # Navigation button styles
+        style.configure('Nav.TButton',
+                       background=self.colors['surface'],
+                       foreground=self.colors['text'],
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(16, 8),
+                       font=('Segoe UI', 12, 'bold'))
+        style.map('Nav.TButton',
+                 background=[('active', self.colors['border']),
+                           ('pressed', self.colors['secondary'])])
+        
+        # Frame styles
+        style.configure('Card.TLabelframe',
+                       background=self.colors['surface'],
+                       borderwidth=2,
+                       relief='solid',
+                       padding=20)
+        style.configure('Card.TLabelframe.Label',
+                       background=self.colors['surface'],
+                       foreground=self.colors['text'],
+                       font=('Segoe UI', 12, 'bold'))
+        
+        # Entry styles
+        style.configure('Modern.TEntry',
+                       fieldbackground=self.colors['surface'],
+                       borderwidth=2,
+                       relief='solid',
+                       insertcolor=self.colors['primary'],
+                       padding=(12, 8))
+        
+        # Combobox styles
+        style.configure('Modern.TCombobox',
+                       fieldbackground=self.colors['surface'],
+                       borderwidth=2,
+                       relief='solid',
+                       padding=(12, 8))
+    
     def setup_ui(self):
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Main container with padding
+        main_container = tk.Frame(self.root, bg=self.colors['background'], padx=30, pady=30)
+        main_container.pack(fill=tk.BOTH, expand=True)
         
-        # Configure grid weights
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        # Header
+        header_frame = tk.Frame(main_container, bg=self.colors['background'])
+        header_frame.pack(fill=tk.X, pady=(0, 30))
+        
+        title_label = tk.Label(header_frame, 
+                              text="✈️ Travel Tracker", 
+                              font=('Segoe UI', 24, 'bold'),
+                              fg=self.colors['text'],
+                              bg=self.colors['background'])
+        title_label.pack(anchor=tk.W)
              
-        # Left panel for controls
-        control_frame = ttk.LabelFrame(main_frame, text="Travel Entry", padding="10")
-        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        # Main content area
+        content_frame = tk.Frame(main_container, bg=self.colors['background'])
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(0, weight=1, minsize=400)
+        content_frame.columnconfigure(1, weight=1, minsize=500)
+        content_frame.rowconfigure(0, weight=1)
         
-        # Manual date entry
-        date_entry_frame = ttk.Frame(control_frame)
-        date_entry_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=10)
+        # Left panel - Travel Entry
+        self.setup_travel_entry_panel(content_frame)
         
-        ttk.Label(date_entry_frame, text="Start Date (YYYY-MM-DD):").grid(row=0, column=0, sticky=tk.W)
-        self.start_date_entry = ttk.Entry(date_entry_frame, width=15)
-        self.start_date_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=2)
+        # Right panel - Calendar
+        self.setup_calendar_panel(content_frame)
+    
+    def setup_travel_entry_panel(self, parent):
+        entry_frame = ttk.LabelFrame(parent, text="✏️ New Travel Entry", style='Card.TLabelframe')
+        entry_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 15))
+        entry_frame.columnconfigure(0, weight=1)
         
-        ttk.Label(date_entry_frame, text="End Date (YYYY-MM-DD):").grid(row=2, column=0, sticky=tk.W)
-        self.end_date_entry = ttk.Entry(date_entry_frame, width=15)
-        self.end_date_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=2)
+        # Date section
+        date_section = tk.Frame(entry_frame, bg=self.colors['surface'])
+        date_section.pack(fill=tk.X, pady=(0, 20))
+        date_section.columnconfigure(0, weight=1)
         
-        # Clear button for dates
-        ttk.Button(date_entry_frame, text="Clear", command=self.clear_dates).grid(row=4, column=0, pady=5)
+        # Start date
+        tk.Label(date_section, text="Start Date", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
         
-        # Location and comment
-        ttk.Label(control_frame, text="Location (City, State):").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
-        self.location_entry = ttk.Combobox(control_frame, width=27)
-        self.location_entry.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=2)
+        self.start_date_entry = ttk.Entry(date_section, style='Modern.TEntry', font=('Segoe UI', 11))
+        self.start_date_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         
-        ttk.Label(control_frame, text="Comment:").grid(row=3, column=0, sticky=tk.W, pady=(10, 0))
-        self.comment_text = tk.Text(control_frame, height=4, width=30)
-        self.comment_text.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=2)
+        # End date
+        tk.Label(date_section, text="End Date", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).grid(row=2, column=0, sticky=tk.W, pady=(0, 5))
         
-        # Buttons
-        button_frame = ttk.Frame(control_frame)
-        button_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=10)
+        self.end_date_entry = ttk.Entry(date_section, style='Modern.TEntry', font=('Segoe UI', 11))
+        self.end_date_entry.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         
-        ttk.Button(button_frame, text="Save", command=self.add_travel).grid(row=0, column=0, padx=2)
-        ttk.Button(button_frame, text="Clear", command=self.clear_form).grid(row=0, column=1, padx=2)
-        ttk.Button(button_frame, text="View Report", command=self.show_report).grid(row=0, column=2, padx=2)
+        # Clear dates button
+        clear_btn = tk.Button(date_section, text="Clear Dates",
+                             bg=self.colors['warning'], fg='white',
+                             font=('Segoe UI', 10, 'bold'),
+                             relief='flat', bd=0, padx=12, pady=8,
+                             activebackground='#d97706', activeforeground='white',
+                             command=self.clear_dates)
+        clear_btn.grid(row=4, column=0, pady=(0, 20))
         
-        # Calendar frame
-        calendar_frame = ttk.LabelFrame(main_frame, text="Calendar", padding="10")
-        calendar_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Location section
+        tk.Label(entry_frame, text="Location", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
+        
+        self.location_entry = ttk.Combobox(entry_frame, style='Modern.TCombobox', font=('Segoe UI', 11))
+        self.location_entry.pack(fill=tk.X, pady=(0, 20))
+        
+        # Comment section
+        tk.Label(entry_frame, text="Notes", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
+        
+        # Comment text with modern styling
+        comment_frame = tk.Frame(entry_frame, bg=self.colors['surface'], relief='solid', bd=2)
+        comment_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.comment_text = tk.Text(comment_frame, height=4, 
+                                   font=('Segoe UI', 10),
+                                   bg=self.colors['surface'],
+                                   fg=self.colors['text'],
+                                   relief='flat',
+                                   padx=12, pady=8,
+                                   wrap=tk.WORD)
+        self.comment_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Action buttons
+        button_frame = tk.Frame(entry_frame, bg=self.colors['surface'])
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+        
+        save_btn = tk.Button(button_frame, text="💾 Save Travel",
+                            bg=self.colors['success'], fg='white',
+                            font=('Segoe UI', 10, 'bold'),
+                            relief='flat', bd=0, padx=12, pady=8,
+                            activebackground='#059669', activeforeground='white',
+                            command=self.add_travel)
+        save_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        clear_btn = tk.Button(button_frame, text="🧹 Clear Form",
+                             bg=self.colors['secondary'], fg='white',
+                             font=('Segoe UI', 10, 'bold'),
+                             relief='flat', bd=0, padx=12, pady=8,
+                             activebackground='#475569', activeforeground='white',
+                             command=self.clear_form)
+        clear_btn.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
+        
+        report_btn = tk.Button(button_frame, text="📊 View Report",
+                              bg=self.colors['primary'], fg='white',
+                              font=('Segoe UI', 10, 'bold'),
+                              relief='flat', bd=0, padx=12, pady=8,
+                              activebackground=self.colors['primary_light'], activeforeground='white',
+                              command=self.show_report)
+        report_btn.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+    
+    def setup_calendar_panel(self, parent):
+        calendar_frame = ttk.LabelFrame(parent, text="📅 Calendar View", style='Card.TLabelframe')
+        calendar_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         calendar_frame.columnconfigure(0, weight=1)
+        calendar_frame.rowconfigure(1, weight=1)
         
-        # Month navigation
-        nav_frame = ttk.Frame(calendar_frame)
-        nav_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Navigation
+        nav_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        nav_frame.pack(fill=tk.X, pady=(0, 20))
         nav_frame.columnconfigure(1, weight=1)
         
-        ttk.Button(nav_frame, text="<", command=self.prev_month).grid(row=0, column=0)
-        self.month_label = ttk.Label(nav_frame, font=('Arial', 12, 'bold'))
+        ttk.Button(nav_frame, text="◀", style='Nav.TButton',
+                  command=self.prev_month).grid(row=0, column=0, padx=(0, 10))
+        
+        self.month_label = tk.Label(nav_frame,
+                                   font=('Segoe UI', 16, 'bold'),
+                                   fg=self.colors['text'],
+                                   bg=self.colors['surface'])
         self.month_label.grid(row=0, column=1)
-        ttk.Button(nav_frame, text=">", command=self.next_month).grid(row=0, column=2)
         
-        # Calendar grid
-        self.calendar_frame = ttk.Frame(calendar_frame)
-        self.calendar_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-    
-    def update_location_dropdown(self):
-        """Update the location combobox with unique locations from travel records"""
-        # Get unique locations and sort them alphabetically
-        locations = set()
-        for record in self.travel_records:
-            if record['location'].strip():
-                locations.add(record['location'])
+        ttk.Button(nav_frame, text="▶", style='Nav.TButton',
+                  command=self.next_month).grid(row=0, column=2, padx=(10, 0))
         
-        sorted_locations = sorted(list(locations))
-        self.location_entry['values'] = sorted_locations
+        # Calendar grid container
+        calendar_container = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        calendar_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.calendar_frame_inner = tk.Frame(calendar_container, bg=self.colors['surface'])
+        self.calendar_frame_inner.pack(expand=True)
+        
+        # Legend
+        legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        legend_frame.pack(fill=tk.X, pady=(20, 0))
+        
+        tk.Label(legend_frame, text="Legend:", 
+                font=('Segoe UI', 10, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        legend_items = [
+            ("🏠 No Travel", self.colors['surface']),
+            ("✈️ Travel Days", self.colors['accent']),
+            ("📍 Selected", self.colors['warning'])
+        ]
+        
+        for text, color in legend_items:
+            legend_item = tk.Label(legend_frame, text=text,
+                                  font=('Segoe UI', 9),
+                                  bg=color,
+                                  fg='white' if color != self.colors['surface'] else self.colors['text'],
+                                  padx=8, pady=4,
+                                  relief='solid', bd=1)
+            legend_item.pack(side=tk.LEFT, padx=(10, 0))
     
     def load_data(self) -> List[Dict]:
         """Load travel data from JSON file"""
@@ -128,10 +389,20 @@ class TravelCalendar:
         with open(self.data_file, 'w') as f:
             json.dump(self.travel_records, f, indent=2)
     
+    def update_location_dropdown(self):
+        """Update the location combobox with unique locations from travel records"""
+        locations = set()
+        for record in self.travel_records:
+            if record['location'].strip():
+                locations.add(record['location'])
+        
+        sorted_locations = sorted(list(locations))
+        self.location_entry['values'] = sorted_locations
+    
     def update_calendar_display(self):
         """Update the calendar display for current month/year"""
         # Clear existing calendar
-        for widget in self.calendar_frame.winfo_children():
+        for widget in self.calendar_frame_inner.winfo_children():
             widget.destroy()
         
         # Update month label
@@ -141,8 +412,12 @@ class TravelCalendar:
         # Day headers
         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         for i, day in enumerate(days):
-            label = ttk.Label(self.calendar_frame, text=day, font=('Arial', 9, 'bold'))
-            label.grid(row=0, column=i, padx=1, pady=1)
+            label = tk.Label(self.calendar_frame_inner, text=day, 
+                           font=('Segoe UI', 10, 'bold'),
+                           fg=self.colors['text_light'],
+                           bg=self.colors['surface'],
+                           width=8, height=2)
+            label.grid(row=0, column=i, padx=2, pady=2)
         
         # Get calendar data
         cal = calendar.monthcalendar(self.current_year, self.current_month)
@@ -152,39 +427,37 @@ class TravelCalendar:
             for day_num, day in enumerate(week):
                 if day == 0:
                     # Empty cell for days not in current month
-                    label = ttk.Label(self.calendar_frame, text="")
-                    label.grid(row=week_num + 1, column=day_num, padx=1, pady=1)
+                    label = tk.Label(self.calendar_frame_inner, text="",
+                                   bg=self.colors['surface'], width=8, height=2)
+                    label.grid(row=week_num + 1, column=day_num, padx=2, pady=2)
                 else:
                     date_obj = datetime(self.current_year, self.current_month, day)
                     
-                    # Check if this date has travel
+                    # Check status
                     has_travel = self.date_has_travel(date_obj)
                     is_selected = self.date_is_selected(date_obj)
                     
-                    # Style the button
-                    style = 'Travel.TButton' if has_travel else 'Normal.TButton'
+                    # Determine style
                     if is_selected:
-                        style = 'Selected.TButton'
+                        style = 'CalendarSelected.TButton'
+                    elif has_travel:
+                        style = 'CalendarTravel.TButton'
+                    else:
+                        style = 'Calendar.TButton'
                     
-                    btn = ttk.Button(self.calendar_frame, text=str(day), width=4,
+                    btn = ttk.Button(self.calendar_frame_inner, text=str(day), 
+                                   style=style,
                                    command=lambda d=day: self.date_clicked(d))
-                    btn.grid(row=week_num + 1, column=day_num, padx=1, pady=1)
-                    
-                    # Configure button styles
-                    if has_travel:
-                        btn.configure(style='Travel.TButton')
-                    if is_selected:
-                        btn.configure(style='Selected.TButton')
+                    btn.grid(row=week_num + 1, column=day_num, padx=2, pady=2, sticky='nsew')
         
-        # Configure styles
-        style = ttk.Style()
-        style.configure('Travel.TButton', background='#FFB3B3', foreground='#CC0000')  # Light red background, dark red text
-        style.configure('Selected.TButton', background='orange')
-        style.configure('Normal.TButton', background='white')
+        # Configure grid weights for responsive layout
+        for i in range(7):
+            self.calendar_frame_inner.columnconfigure(i, weight=1)
+        for i in range(len(cal) + 1):
+            self.calendar_frame_inner.rowconfigure(i, weight=1)
     
     def date_has_travel(self, date_obj: datetime) -> bool:
         """Check if a date has travel records"""
-        date_str = date_obj.strftime('%Y-%m-%d')
         for record in self.travel_records:
             start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
             end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
@@ -236,13 +509,6 @@ class TravelCalendar:
             self.end_date_entry.delete(0, tk.END)
             self.selecting_range = True
         
-        self.update_calendar_display()
-    
-    def clear_selection(self):
-        """Clear date selection"""
-        self.selected_start_date = None
-        self.selected_end_date = None
-        self.selecting_range = False
         self.update_calendar_display()
     
     def clear_dates(self):
@@ -324,11 +590,11 @@ class TravelCalendar:
             self.travel_records[self.edit_index] = record
             self.edit_mode = False
             self.edit_index = None
-            success_message = "Travel record updated successfully!"
+            success_message = "✅ Travel record updated successfully!"
         else:
             # Add new record
             self.travel_records.append(record)
-            success_message = "Travel record added successfully!"
+            success_message = "✅ Travel record added successfully!"
         
         self.save_data()
         self.update_calendar_display()
@@ -353,17 +619,23 @@ class TravelCalendar:
         end_date = datetime.strptime(record['end_date'], '%Y-%m-%d').date()
         
         if end_date < current_date:
-            return 'past'  # Blue for past
+            return 'past'
         elif start_date <= current_date <= end_date:
-            return 'current'  # Green for current
+            return 'current'
         else:
-            return 'future'  # Red for future
+            return 'future'
     
     def configure_treeview_tags(self, records_tree):
-        """Configure color tags for the treeview"""
-        records_tree.tag_configure('past', background='#E6F3FF', foreground='#0066CC')  # Light blue background, dark blue text
-        records_tree.tag_configure('current', background='#E6FFE6', foreground='#006600')  # Light green background, dark green text
-        records_tree.tag_configure('future', background='#FFE6E6', foreground='#CC0000')  # Light red background, dark red text
+        """Configure modern color tags for the treeview"""
+        records_tree.tag_configure('past', 
+                                  background='#f1f5f9', 
+                                  foreground='#64748b')
+        records_tree.tag_configure('current', 
+                                  background='#dcfce7', 
+                                  foreground='#15803d')
+        records_tree.tag_configure('future', 
+                                  background='#fef3c7', 
+                                  foreground='#d97706')
     
     def update_records_display(self, records_tree):
         """Update the travel records display in the report window"""
@@ -397,7 +669,6 @@ class TravelCalendar:
         selection = records_tree.selection()
         if not selection:
             messagebox.showwarning("Warning", "Please select a record to edit")
-            # Restore focus to report window after messagebox
             report_window.lift()
             report_window.focus_force()
             return
@@ -447,8 +718,41 @@ class TravelCalendar:
                 self.update_calendar_display()
                 report_window.destroy()
                 
-                messagebox.showinfo("Edit Mode", "Record loaded for editing. Click 'Save' to update the record.")
+                messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Click 'Save Travel' to update.")
                 break
+    
+    def delete_record(self, records_tree, report_window):
+        """Delete selected travel record from the report window"""
+        selection = records_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a record to delete")
+            report_window.lift()
+            report_window.focus_force()
+            return
+        
+        if messagebox.askyesno("Confirm", "🗑️ Are you sure you want to delete this record?"):
+            item = selection[0]
+            values = records_tree.item(item, 'values')
+            
+            # Find and remove the record
+            for i, record in enumerate(self.travel_records):
+                record_comment = record.get('comment', '')
+                display_comment = record_comment[:47] + "..." if len(record_comment) > 50 else record_comment
+                
+                if (record['start_date'] == values[0] and 
+                    record['end_date'] == values[1] and 
+                    record['location'] == values[2] and
+                    display_comment == values[3]):
+                    del self.travel_records[i]
+                    break
+            
+            self.save_data()
+            self.update_records_display(records_tree)
+            self.update_calendar_display()
+            self.update_location_dropdown()
+        
+        report_window.lift()
+        report_window.focus_force()
     
     def sort_records(self, records_tree, column):
         """Sort records by the specified column"""
@@ -507,61 +811,25 @@ class TravelCalendar:
     def update_column_headers(self, records_tree, sorted_column):
         """Update column headers to show sort indicators"""
         # Reset all headers first
-        records_tree.heading('Start', text='Start Date')
-        records_tree.heading('End', text='End Date')
-        records_tree.heading('Location', text='Location')
-        records_tree.heading('Comment', text='Comment')
+        records_tree.heading('Start', text='Start Date', anchor='w')
+        records_tree.heading('End', text='End Date', anchor='w')
+        records_tree.heading('Location', text='Location', anchor='w')
+        records_tree.heading('Comment', text='Notes', anchor='w')
         
         # Add sort indicator to the sorted column
         if sorted_column:
             arrow = ' ↓' if self.sort_reverse else ' ↑'
             if sorted_column == 'Start':
-                records_tree.heading('Start', text=f'Start Date{arrow}')
+                records_tree.heading('Start', text=f'Start Date{arrow}', anchor='w')
             elif sorted_column == 'End':
-                records_tree.heading('End', text=f'End Date{arrow}')
+                records_tree.heading('End', text=f'End Date{arrow}', anchor='w')
             elif sorted_column == 'Location':
-                records_tree.heading('Location', text=f'Location{arrow}')
-    
-    
-    def delete_record(self, records_tree, report_window):
-        """Delete selected travel record from the report window"""
-        selection = records_tree.selection()
-        if not selection:
-            messagebox.showwarning("Warning", "Please select a record to delete")
-            # Restore focus to report window after messagebox
-            report_window.lift()
-            report_window.focus_force()
-            return
-        
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this record?"):
-            item = selection[0]
-            values = records_tree.item(item, 'values')
-            
-            # Find and remove the record
-            for i, record in enumerate(self.travel_records):
-                record_comment = record.get('comment', '')
-                display_comment = record_comment[:47] + "..." if len(record_comment) > 50 else record_comment
-                
-                if (record['start_date'] == values[0] and 
-                    record['end_date'] == values[1] and 
-                    record['location'] == values[2] and
-                    display_comment == values[3]):
-                    del self.travel_records[i]
-                    break
-            
-            self.save_data()
-            self.update_records_display(records_tree)
-            self.update_calendar_display()
-            self.update_location_dropdown()
-        
-        # Restore focus to report window after any messagebox interaction
-        report_window.lift()
-        report_window.focus_force()
+                records_tree.heading('Location', text=f'Location{arrow}', anchor='w')
     
     def show_report(self):
-        """Show travel report in a new window"""
+        """Show modern travel report in a new window"""
         if not self.travel_records:
-            messagebox.showinfo("Report", "No travel records found.")
+            messagebox.showinfo("Report", "📈 No travel records found.")
             return
         
         # Reset sorting state
@@ -592,72 +860,122 @@ class TravelCalendar:
         
         percentage = (total_days / days_in_year_so_far) * 100 if days_in_year_so_far > 0 else 0
         
-        # Create report window
+        # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("800x700")
-        report_window.configure(bg='#f0f0f0')
+        report_window.geometry("760x800")
+        report_window.configure(bg=self.colors['background'])
         
-        # Report content
-        report_frame = ttk.Frame(report_window, padding="20")
-        report_frame.pack(fill=tk.BOTH, expand=True)
-        report_frame.columnconfigure(0, weight=1)
-        report_frame.rowconfigure(3, weight=1)
+        # Main container
+        main_container = tk.Frame(report_window, bg=self.colors['background'], padx=30, pady=30)
+        main_container.pack(fill=tk.BOTH, expand=True)
+        main_container.columnconfigure(0, weight=1)
+        main_container.rowconfigure(3, weight=1)
         
-        ttk.Label(report_frame, text="Travel Report", font=('Arial', 16, 'bold')).grid(row=0, column=0, pady=(0, 20))
+        # Header
+        header_frame = tk.Frame(main_container, bg=self.colors['background'])
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
         
-        # Statistics frame
-        stats_frame = ttk.Frame(report_frame)
-        stats_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        title_label = tk.Label(header_frame, 
+                              text="📊 Travel Report", 
+                              font=('Segoe UI', 24, 'bold'),
+                              fg=self.colors['text'],
+                              bg=self.colors['background'])
+        title_label.pack(anchor=tk.W)
         
-        ttk.Label(stats_frame, text=f"Total Days Traveled (This Year): {total_days}", 
-                 font=('Arial', 12)).pack(anchor=tk.W, pady=2)
+        # Statistics cards
+        stats_frame = tk.Frame(main_container, bg=self.colors['background'])
+        stats_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
+        stats_frame.columnconfigure(0, weight=1)
+        stats_frame.columnconfigure(1, weight=1)
+        stats_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(stats_frame, text=f"Percentage of Year Traveled: {percentage:.1f}%", 
-                 font=('Arial', 12)).pack(anchor=tk.W, pady=2)
+        # Days traveled card
+        days_card = tk.Frame(stats_frame, bg=self.colors['primary'], relief='solid', bd=0, padx=16, pady=12)
+        days_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
         
-        # Color legend frame
-        legend_frame = ttk.LabelFrame(report_frame, text="Legend", padding="10")
-        legend_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        tk.Label(days_card, text="✈️", font=('Segoe UI', 20), 
+                bg=self.colors['primary'], fg='white').pack()
+        tk.Label(days_card, text=str(total_days), font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['primary'], fg='white').pack()
+        tk.Label(days_card, text="Days Traveled (This Year)", font=('Segoe UI', 10),
+                bg=self.colors['primary'], fg='white').pack()
         
-        # Create legend items
-        legend_info = [
-            ("Past Travel", "#E6F3FF", "#0066CC"),
-            ("Current Travel", "#E6FFE6", "#006600"),
-            ("Future Travel", "#FFE6E6", "#CC0000")
+        # Percentage card
+        percent_card = tk.Frame(stats_frame, bg=self.colors['success'], relief='solid', bd=0, padx=16, pady=12)
+        percent_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        
+        tk.Label(percent_card, text="📈", font=('Segoe UI', 20),
+                bg=self.colors['success'], fg='white').pack()
+        tk.Label(percent_card, text=f"{percentage:.1f}%", font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['success'], fg='white').pack()
+        tk.Label(percent_card, text="Percentage of Year", font=('Segoe UI', 10),
+                bg=self.colors['success'], fg='white').pack()
+        
+        # Locations card
+        locations_card = tk.Frame(stats_frame, bg=self.colors['accent'], relief='solid', bd=0, padx=16, pady=12)
+        locations_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=(10, 0))
+        
+        tk.Label(locations_card, text="🌍", font=('Segoe UI', 20),
+                bg=self.colors['accent'], fg='white').pack()
+        tk.Label(locations_card, text=str(len(locations)), font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['accent'], fg='white').pack()
+        tk.Label(locations_card, text="Unique Locations", font=('Segoe UI', 10),
+                bg=self.colors['accent'], fg='white').pack()
+        
+        # Legend
+        legend_frame = ttk.LabelFrame(main_container, text="🎨 Status Legend", style='Card.TLabelframe')
+        legend_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        legend_inner = tk.Frame(legend_frame, bg=self.colors['surface'])
+        legend_inner.pack(fill=tk.X)
+        
+        legend_items = [
+            ("Past Travel", "#f1f5f9", "#64748b"),
+            ("Current Travel", "#dcfce7", "#15803d"),
+            ("Future Travel", "#fef3c7", "#d97706")
         ]
         
-        for i, (label_text, bg_color, fg_color) in enumerate(legend_info):
-            legend_label = tk.Label(legend_frame, text=f"  {label_text}  ", 
-                                  bg=bg_color, fg=fg_color, relief="solid", borderwidth=1)
-            legend_label.grid(row=0, column=i, padx=10, pady=5)
+        for i, (text, bg_color, fg_color) in enumerate(legend_items):
+            legend_label = tk.Label(legend_inner, text=f"  {text}  ",
+                                  bg=bg_color, fg=fg_color,
+                                  relief="solid", borderwidth=1,
+                                  font=('Segoe UI', 10))
+            legend_label.pack(side=tk.LEFT, padx=(0, 15))
         
-        # Travel records section
-        records_label_frame = ttk.LabelFrame(report_frame, text="Travel Records", padding="10")
-        records_label_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
-        records_label_frame.columnconfigure(0, weight=1)
-        records_label_frame.rowconfigure(0, weight=1)
+        # Travel records
+        records_frame = ttk.LabelFrame(main_container, text="📋 Travel Records", style='Card.TLabelframe')
+        records_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        records_frame.columnconfigure(0, weight=1)
+        records_frame.rowconfigure(0, weight=1)
         
-        # Treeview for records
-        records_tree = ttk.Treeview(records_label_frame, columns=('Start', 'End', 'Location', 'Comment'), show='headings', height=15)
-        records_tree.heading('Start', text='Start Date')
-        records_tree.heading('End', text='End Date')
-        records_tree.heading('Location', text='Location')
-        records_tree.heading('Comment', text='Comment')
+        # Treeview with modern styling
+        tree_frame = tk.Frame(records_frame, bg=self.colors['surface'])
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        tree_frame.columnconfigure(0, weight=1)
+        tree_frame.rowconfigure(0, weight=1)
+        
+        records_tree = ttk.Treeview(tree_frame, columns=('Start', 'End', 'Location', 'Comment'), 
+                                   show='headings', height=15)
+        
+        # Configure headers
+        records_tree.heading('Start', text='Start Date', anchor='w')
+        records_tree.heading('End', text='End Date', anchor='w')
+        records_tree.heading('Location', text='Location', anchor='w')
+        records_tree.heading('Comment', text='Notes', anchor='w')
         
         # Add click handlers for sortable columns
         records_tree.heading('Start', command=lambda: self.sort_records(records_tree, 'Start'))
         records_tree.heading('End', command=lambda: self.sort_records(records_tree, 'End'))
         records_tree.heading('Location', command=lambda: self.sort_records(records_tree, 'Location'))
-        # Note: Comment column is intentionally not sortable
         
         # Set column widths
-        records_tree.column('Start', width=100)
-        records_tree.column('End', width=100)
+        records_tree.column('Start', width=120)
+        records_tree.column('End', width=120)
         records_tree.column('Location', width=200)
-        records_tree.column('Comment', width=300)
+        records_tree.column('Comment', width=400)
         
-        scrollbar = ttk.Scrollbar(records_label_frame, orient=tk.VERTICAL, command=records_tree.yview)
+        scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=records_tree.yview)
         records_tree.configure(yscrollcommand=scrollbar.set)
         
         records_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -666,19 +984,37 @@ class TravelCalendar:
         # Update records display
         self.update_records_display(records_tree)
         
-        # Buttons frame
-        buttons_frame = ttk.Frame(report_frame)
-        buttons_frame.grid(row=4, column=0, pady=10)
+        # Action buttons
+        buttons_frame = tk.Frame(main_container, bg=self.colors['background'])
+        buttons_frame.grid(row=4, column=0, pady=(20, 0))
         
-        ttk.Button(buttons_frame, text="Edit Record", 
-                  command=lambda: self.edit_record(records_tree, report_window)).pack(side=tk.LEFT, padx=5)
-        ttk.Button(buttons_frame, text="Delete Record", 
-                  command=lambda: self.delete_record(records_tree, report_window)).pack(side=tk.LEFT, padx=5)
-        ttk.Button(buttons_frame, text="Close", command=report_window.destroy).pack(side=tk.LEFT, padx=5)
+        edit_btn = tk.Button(buttons_frame, text="✏️ Edit Record",
+                            bg=self.colors['success'], fg='white',
+                            font=('Segoe UI', 10, 'bold'),
+                            relief='flat', bd=0, padx=12, pady=8,
+                            activebackground='#059669', activeforeground='white',
+                            command=lambda: self.edit_record(records_tree, report_window))
+        edit_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        delete_btn = tk.Button(buttons_frame, text="🗑️ Delete Record",
+                              bg=self.colors['danger'], fg='white',
+                              font=('Segoe UI', 10, 'bold'),
+                              relief='flat', bd=0, padx=12, pady=8,
+                              activebackground='#dc2626', activeforeground='white',
+                              command=lambda: self.delete_record(records_tree, report_window))
+        delete_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        close_btn = tk.Button(buttons_frame, text="✖️ Close",
+                             bg=self.colors['secondary'], fg='white',
+                             font=('Segoe UI', 10, 'bold'),
+                             relief='flat', bd=0, padx=12, pady=8,
+                             activebackground='#475569', activeforeground='white',
+                             command=report_window.destroy)
+        close_btn.pack(side=tk.LEFT)
 
 def main():
     root = tk.Tk()
-    app = TravelCalendar(root)
+    app = ModernTravelCalendar(root)
     root.mainloop()
 
 if __name__ == "__main__":
