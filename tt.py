@@ -10,7 +10,7 @@ class ModernTravelCalendar:
     def __init__(self, root):
         self.root = root
         self.root.title("Travel Tracker")
-        self.root.geometry("1000x800")
+        self.root.geometry("1000x720")
         
         # Modern color scheme
         self.colors = {
@@ -200,18 +200,7 @@ class ModernTravelCalendar:
         # Main container with padding
         main_container = tk.Frame(self.root, bg=self.colors['background'], padx=30, pady=30)
         main_container.pack(fill=tk.BOTH, expand=True)
-        
-        # Header
-        header_frame = tk.Frame(main_container, bg=self.colors['background'])
-        header_frame.pack(fill=tk.X, pady=(0, 30))
-        
-        title_label = tk.Label(header_frame, 
-                              text="✈️ Travel Tracker", 
-                              font=('Segoe UI', 24, 'bold'),
-                              fg=self.colors['text'],
-                              bg=self.colors['background'])
-        title_label.pack(anchor=tk.W)
-             
+                     
         # Main content area
         content_frame = tk.Frame(main_container, bg=self.colors['background'])
         content_frame.pack(fill=tk.BOTH, expand=True)
@@ -226,7 +215,7 @@ class ModernTravelCalendar:
         self.setup_calendar_panel(content_frame)
     
     def setup_travel_entry_panel(self, parent):
-        entry_frame = ttk.LabelFrame(parent, text="✏️ New Travel Entry", style='Card.TLabelframe')
+        entry_frame = ttk.LabelFrame(parent, text="✈️ New Travel Entry", style='Card.TLabelframe')
         entry_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 15))
         entry_frame.columnconfigure(0, weight=1)
         
@@ -871,18 +860,7 @@ class ModernTravelCalendar:
         main_container.pack(fill=tk.BOTH, expand=True)
         main_container.columnconfigure(0, weight=1)
         main_container.rowconfigure(3, weight=1)
-        
-        # Header
-        header_frame = tk.Frame(main_container, bg=self.colors['background'])
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
-        
-        title_label = tk.Label(header_frame, 
-                              text="📊 Travel Report", 
-                              font=('Segoe UI', 24, 'bold'),
-                              fg=self.colors['text'],
-                              bg=self.colors['background'])
-        title_label.pack(anchor=tk.W)
-        
+               
         # Statistics cards
         stats_frame = tk.Frame(main_container, bg=self.colors['background'])
         stats_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
@@ -920,7 +898,7 @@ class ModernTravelCalendar:
                 bg=self.colors['accent'], fg='white').pack()
         tk.Label(locations_card, text=str(len(locations)), font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['accent'], fg='white').pack()
-        tk.Label(locations_card, text="Unique Locations", font=('Segoe UI', 10),
+        tk.Label(locations_card, text="Unique Locations Visited", font=('Segoe UI', 10),
                 bg=self.colors['accent'], fg='white').pack()
         
         # Legend
