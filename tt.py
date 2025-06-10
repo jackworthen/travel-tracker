@@ -46,6 +46,9 @@ class ModernTravelCalendar:
         self.sort_column = None
         self.sort_reverse = False
         
+        # Report window tracking
+        self.report_window = None
+        
         # Current display
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
@@ -325,7 +328,7 @@ class ModernTravelCalendar:
         
         self.month_label = tk.Label(nav_frame,
                                    font=('Segoe UI', 16, 'bold'),
-                                   fg=self.colors['text'],
+                                   fg=self.colors['primary'],  # Changed to blue
                                    bg=self.colors['surface'])
         self.month_label.grid(row=0, column=1)
         
@@ -653,13 +656,14 @@ class ModernTravelCalendar:
                 comment
             ), tags=(color_tag,))
     
-    def edit_record(self, records_tree, report_window):
+    def edit_record(self, records_tree, report_window=None):
         """Edit selected travel record by populating main window"""
         selection = records_tree.selection()
         if not selection:
             messagebox.showwarning("Warning", "Please select a record to edit")
-            report_window.lift()
-            report_window.focus_force()
+            if self.report_window:
+                self.report_window.lift()
+                self.report_window.focus_force()
             return
         
         item = selection[0]
@@ -705,18 +709,19 @@ class ModernTravelCalendar:
                 
                 # Update calendar display and close report window
                 self.update_calendar_display()
-                report_window.destroy()
+                self._on_report_window_close()
                 
                 messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Click 'Save Travel' to update.")
                 break
     
-    def delete_record(self, records_tree, report_window):
+    def delete_record(self, records_tree, report_window=None):
         """Delete selected travel record from the report window"""
         selection = records_tree.selection()
         if not selection:
             messagebox.showwarning("Warning", "Please select a record to delete")
-            report_window.lift()
-            report_window.focus_force()
+            if self.report_window:
+                self.report_window.lift()
+                self.report_window.focus_force()
             return
         
         if messagebox.askyesno("Confirm", "🗑️ Are you sure you want to delete this record?"):
@@ -740,8 +745,9 @@ class ModernTravelCalendar:
             self.update_calendar_display()
             self.update_location_dropdown()
         
-        report_window.lift()
-        report_window.focus_force()
+        if self.report_window:
+            self.report_window.lift()
+            self.report_window.focus_force()
     
     def sort_records(self, records_tree, column):
         """Sort records by the specified column"""
@@ -821,12 +827,20 @@ class ModernTravelCalendar:
             messagebox.showinfo("Report", "📈 No travel records found.")
             return
         
+        # Check if report window already exists
+        if self.report_window and self.report_window.winfo_exists():
+            # Bring existing window to front
+            self.report_window.lift()
+            self.report_window.focus_force()
+            return
+        
         # Reset sorting state
         self.sort_column = None
         self.sort_reverse = False
         
         # Calculate statistics
         total_days = 0
+        total_trips = 0  # New: count total trips (only past and current)
         locations = set()
         current_date = datetime.now()
         year_start = datetime(current_date.year, 1, 1)
@@ -836,8 +850,12 @@ class ModernTravelCalendar:
             start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
             end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
             
-            # Only count days in current year
+            # Only count trips and days in current year
             if start_date.year <= current_date.year and end_date.year >= current_date.year:
+                # Only count as a trip if it has already started (past or current travel)
+                if start_date <= current_date:
+                    total_trips += 1
+                
                 # Adjust dates to current year if needed
                 count_start = max(start_date, year_start)
                 count_end = min(end_date, current_date)
@@ -855,6 +873,10 @@ class ModernTravelCalendar:
         report_window.geometry("760x800")
         report_window.configure(bg=self.colors['background'])
         
+        # Store reference and set up cleanup
+        self.report_window = report_window
+        report_window.protocol("WM_DELETE_WINDOW", self._on_report_window_close)
+        
         # Main container
         main_container = tk.Frame(report_window, bg=self.colors['background'], padx=30, pady=30)
         main_container.pack(fill=tk.BOTH, expand=True)
@@ -867,10 +889,22 @@ class ModernTravelCalendar:
         stats_frame.columnconfigure(0, weight=1)
         stats_frame.columnconfigure(1, weight=1)
         stats_frame.columnconfigure(2, weight=1)
+        stats_frame.columnconfigure(3, weight=1)  # New: 4th column
         
-        # Days traveled card
+        # NEW: Total trips card (first card)
+        trips_card = tk.Frame(stats_frame, bg='#EA3680', relief='solid', bd=0, padx=16, pady=12)
+        trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 8))
+        
+        tk.Label(trips_card, text="🚀", font=('Segoe UI', 20), 
+                bg='#EA3680', fg='white').pack()
+        tk.Label(trips_card, text=str(total_trips), font=('Segoe UI', 24, 'bold'),
+                bg='#EA3680', fg='white').pack()
+        tk.Label(trips_card, text="Total Trips (This Year)", font=('Segoe UI', 10),
+                bg='#EA3680', fg='white').pack()
+        
+        # Days traveled card (moved to second position)
         days_card = tk.Frame(stats_frame, bg=self.colors['primary'], relief='solid', bd=0, padx=16, pady=12)
-        days_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        days_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(days_card, text="✈️", font=('Segoe UI', 20), 
                 bg=self.colors['primary'], fg='white').pack()
@@ -879,9 +913,9 @@ class ModernTravelCalendar:
         tk.Label(days_card, text="Days Traveled (This Year)", font=('Segoe UI', 10),
                 bg=self.colors['primary'], fg='white').pack()
         
-        # Percentage card
+        # Percentage card (moved to third position)
         percent_card = tk.Frame(stats_frame, bg=self.colors['success'], relief='solid', bd=0, padx=16, pady=12)
-        percent_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        percent_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(percent_card, text="📈", font=('Segoe UI', 20),
                 bg=self.colors['success'], fg='white').pack()
@@ -890,9 +924,9 @@ class ModernTravelCalendar:
         tk.Label(percent_card, text="Percentage of Year", font=('Segoe UI', 10),
                 bg=self.colors['success'], fg='white').pack()
         
-        # Locations card
+        # Locations card (moved to fourth position)
         locations_card = tk.Frame(stats_frame, bg=self.colors['accent'], relief='solid', bd=0, padx=16, pady=12)
-        locations_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=(10, 0))
+        locations_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=(8, 0))
         
         tk.Label(locations_card, text="🌍", font=('Segoe UI', 20),
                 bg=self.colors['accent'], fg='white').pack()
@@ -971,7 +1005,7 @@ class ModernTravelCalendar:
                             font=('Segoe UI', 10, 'bold'),
                             relief='flat', bd=0, padx=12, pady=8,
                             activebackground='#059669', activeforeground='white',
-                            command=lambda: self.edit_record(records_tree, report_window))
+                            command=lambda: self.edit_record(records_tree))
         edit_btn.pack(side=tk.LEFT, padx=(0, 10))
         
         delete_btn = tk.Button(buttons_frame, text="🗑️ Delete Record",
@@ -979,7 +1013,7 @@ class ModernTravelCalendar:
                               font=('Segoe UI', 10, 'bold'),
                               relief='flat', bd=0, padx=12, pady=8,
                               activebackground='#dc2626', activeforeground='white',
-                              command=lambda: self.delete_record(records_tree, report_window))
+                              command=lambda: self.delete_record(records_tree))
         delete_btn.pack(side=tk.LEFT, padx=(0, 10))
         
         close_btn = tk.Button(buttons_frame, text="✖️ Close",
@@ -987,8 +1021,14 @@ class ModernTravelCalendar:
                              font=('Segoe UI', 10, 'bold'),
                              relief='flat', bd=0, padx=12, pady=8,
                              activebackground='#475569', activeforeground='white',
-                             command=report_window.destroy)
+                             command=self._on_report_window_close)
         close_btn.pack(side=tk.LEFT)
+
+    def _on_report_window_close(self):
+        """Handle report window close event"""
+        if self.report_window:
+            self.report_window.destroy()
+            self.report_window = None
 
 def main():
     root = tk.Tk()
