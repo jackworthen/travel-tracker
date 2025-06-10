@@ -178,7 +178,7 @@ class TravelCalendar:
         
         # Configure styles
         style = ttk.Style()
-        style.configure('Travel.TButton', background='lightblue')
+        style.configure('Travel.TButton', background='#FFB3B3', foreground='#CC0000')  # Light red background, dark red text
         style.configure('Selected.TButton', background='orange')
         style.configure('Normal.TButton', background='white')
     
@@ -346,11 +346,33 @@ class TravelCalendar:
         self.edit_mode = False
         self.edit_index = None
     
+    def get_record_color_tag(self, record):
+        """Determine the color tag for a record based on its date range"""
+        current_date = datetime.now().date()
+        start_date = datetime.strptime(record['start_date'], '%Y-%m-%d').date()
+        end_date = datetime.strptime(record['end_date'], '%Y-%m-%d').date()
+        
+        if end_date < current_date:
+            return 'past'  # Blue for past
+        elif start_date <= current_date <= end_date:
+            return 'current'  # Green for current
+        else:
+            return 'future'  # Red for future
+    
+    def configure_treeview_tags(self, records_tree):
+        """Configure color tags for the treeview"""
+        records_tree.tag_configure('past', background='#E6F3FF', foreground='#0066CC')  # Light blue background, dark blue text
+        records_tree.tag_configure('current', background='#E6FFE6', foreground='#006600')  # Light green background, dark green text
+        records_tree.tag_configure('future', background='#FFE6E6', foreground='#CC0000')  # Light red background, dark red text
+    
     def update_records_display(self, records_tree):
         """Update the travel records display in the report window"""
         # Clear existing items
         for item in records_tree.get_children():
             records_tree.delete(item)
+        
+        # Configure color tags
+        self.configure_treeview_tags(records_tree)
         
         # Add records sorted by start date
         sorted_records = sorted(self.travel_records, key=lambda x: x['start_date'], reverse=True)
@@ -360,12 +382,15 @@ class TravelCalendar:
             if len(comment) > 50:
                 comment = comment[:47] + "..."
             
+            # Get the appropriate color tag
+            color_tag = self.get_record_color_tag(record)
+            
             records_tree.insert('', tk.END, values=(
                 record['start_date'],
                 record['end_date'],
                 record['location'],
                 comment
-            ))
+            ), tags=(color_tag,))
     
     def edit_record(self, records_tree, report_window):
         """Edit selected travel record by populating main window"""
@@ -459,6 +484,9 @@ class TravelCalendar:
         for item in records_tree.get_children():
             records_tree.delete(item)
         
+        # Configure color tags
+        self.configure_treeview_tags(records_tree)
+        
         # Add sorted records
         for record in sorted_records:
             # Truncate comment if it's too long for display
@@ -466,12 +494,15 @@ class TravelCalendar:
             if len(comment) > 50:
                 comment = comment[:47] + "..."
             
+            # Get the appropriate color tag
+            color_tag = self.get_record_color_tag(record)
+            
             records_tree.insert('', tk.END, values=(
                 record['start_date'],
                 record['end_date'],
                 record['location'],
                 comment
-            ))
+            ), tags=(color_tag,))
     
     def update_column_headers(self, records_tree, sorted_column):
         """Update column headers to show sort indicators"""
@@ -564,14 +595,14 @@ class TravelCalendar:
         # Create report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("800x675")
+        report_window.geometry("800x700")
         report_window.configure(bg='#f0f0f0')
         
         # Report content
         report_frame = ttk.Frame(report_window, padding="20")
         report_frame.pack(fill=tk.BOTH, expand=True)
         report_frame.columnconfigure(0, weight=1)
-        report_frame.rowconfigure(2, weight=1)
+        report_frame.rowconfigure(3, weight=1)
         
         ttk.Label(report_frame, text="Travel Report", font=('Arial', 16, 'bold')).grid(row=0, column=0, pady=(0, 20))
         
@@ -585,9 +616,25 @@ class TravelCalendar:
         ttk.Label(stats_frame, text=f"Percentage of Year Traveled: {percentage:.1f}%", 
                  font=('Arial', 12)).pack(anchor=tk.W, pady=2)
         
+        # Color legend frame
+        legend_frame = ttk.LabelFrame(report_frame, text="Legend", padding="10")
+        legend_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # Create legend items
+        legend_info = [
+            ("Past Travel", "#E6F3FF", "#0066CC"),
+            ("Current Travel", "#E6FFE6", "#006600"),
+            ("Future Travel", "#FFE6E6", "#CC0000")
+        ]
+        
+        for i, (label_text, bg_color, fg_color) in enumerate(legend_info):
+            legend_label = tk.Label(legend_frame, text=f"  {label_text}  ", 
+                                  bg=bg_color, fg=fg_color, relief="solid", borderwidth=1)
+            legend_label.grid(row=0, column=i, padx=10, pady=5)
+        
         # Travel records section
         records_label_frame = ttk.LabelFrame(report_frame, text="Travel Records", padding="10")
-        records_label_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        records_label_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         records_label_frame.columnconfigure(0, weight=1)
         records_label_frame.rowconfigure(0, weight=1)
         
@@ -621,7 +668,7 @@ class TravelCalendar:
         
         # Buttons frame
         buttons_frame = ttk.Frame(report_frame)
-        buttons_frame.grid(row=3, column=0, pady=10)
+        buttons_frame.grid(row=4, column=0, pady=10)
         
         ttk.Button(buttons_frame, text="Edit Record", 
                   command=lambda: self.edit_record(records_tree, report_window)).pack(side=tk.LEFT, padx=5)
