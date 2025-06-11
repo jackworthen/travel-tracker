@@ -966,6 +966,7 @@ class ModernTravelCalendar:
         # Calculate statistics
         total_days = 0
         total_trips = 0  # New: count total trips (only past and current)
+        future_trips = 0  # New: count future trips
         locations = set()
         current_date = datetime.now()
         year_start = datetime(current_date.year, 1, 1)
@@ -974,6 +975,10 @@ class ModernTravelCalendar:
         for record in self.travel_records:
             start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
             end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+            
+            # Count future trips (trips that haven't started yet)
+            if start_date > current_date:
+                future_trips += 1
             
             # Only count trips and days in current year
             if start_date.year <= current_date.year and end_date.year >= current_date.year:
@@ -995,7 +1000,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("760x800")
+        report_window.geometry("770x800")
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
@@ -1014,33 +1019,45 @@ class ModernTravelCalendar:
         stats_frame.columnconfigure(0, weight=1)
         stats_frame.columnconfigure(1, weight=1)
         stats_frame.columnconfigure(2, weight=1)
-        stats_frame.columnconfigure(3, weight=1)  # New: 4th column
+        stats_frame.columnconfigure(3, weight=1)
+        stats_frame.columnconfigure(4, weight=1)  # New: 5th column
         
-        # NEW: Total trips card (first card)
+        # NEW: Total trips card (first card) - MODIFIED: Shows current year instead of "This Year"
         trips_card = tk.Frame(stats_frame, bg='#EA3680', relief='solid', bd=0, padx=16, pady=12)
-        trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 8))
+        trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 4))
         
         tk.Label(trips_card, text="🚀", font=('Segoe UI', 20), 
                 bg='#EA3680', fg='white').pack()
         tk.Label(trips_card, text=str(total_trips), font=('Segoe UI', 24, 'bold'),
                 bg='#EA3680', fg='white').pack()
-        tk.Label(trips_card, text="Total Trips (This Year)", font=('Segoe UI', 10),
+        tk.Label(trips_card, text=f"Total Trips ({current_date.year})", font=('Segoe UI', 10),
                 bg='#EA3680', fg='white').pack()
         
-        # Days traveled card (moved to second position)
+        # Future trips card (second position)
+        future_card = tk.Frame(stats_frame, bg='#E5B32D', relief='solid', bd=0, padx=16, pady=12)
+        future_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=4)
+        
+        tk.Label(future_card, text="🗓️", font=('Segoe UI', 20),
+                bg='#E5B32D', fg='white').pack()
+        tk.Label(future_card, text=str(future_trips), font=('Segoe UI', 24, 'bold'),
+                bg='#E5B32D', fg='white').pack()
+        tk.Label(future_card, text="Upcoming Trips", font=('Segoe UI', 10),
+                bg='#E5B32D', fg='white').pack()
+        
+        # Days traveled card (moved to third position)
         days_card = tk.Frame(stats_frame, bg=self.colors['primary'], relief='solid', bd=0, padx=16, pady=12)
-        days_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=4)
+        days_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(days_card, text="✈️", font=('Segoe UI', 20), 
                 bg=self.colors['primary'], fg='white').pack()
         tk.Label(days_card, text=str(total_days), font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['primary'], fg='white').pack()
-        tk.Label(days_card, text="Days Traveled (This Year)", font=('Segoe UI', 10),
+        tk.Label(days_card, text=f"Days Traveled ({current_date.year})", font=('Segoe UI', 10),
                 bg=self.colors['primary'], fg='white').pack()
         
-        # Percentage card (moved to third position)
+        # Percentage card (moved to fourth position)
         percent_card = tk.Frame(stats_frame, bg=self.colors['success'], relief='solid', bd=0, padx=16, pady=12)
-        percent_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=4)
+        percent_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(percent_card, text="📈", font=('Segoe UI', 20),
                 bg=self.colors['success'], fg='white').pack()
@@ -1049,15 +1066,15 @@ class ModernTravelCalendar:
         tk.Label(percent_card, text="Percentage of Year", font=('Segoe UI', 10),
                 bg=self.colors['success'], fg='white').pack()
         
-        # Locations card (moved to fourth position)
+        # Locations card (moved to fifth position)
         locations_card = tk.Frame(stats_frame, bg=self.colors['accent'], relief='solid', bd=0, padx=16, pady=12)
-        locations_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=(8, 0))
+        locations_card.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=(4, 0))
         
         tk.Label(locations_card, text="🌍", font=('Segoe UI', 20),
                 bg=self.colors['accent'], fg='white').pack()
         tk.Label(locations_card, text=str(len(locations)), font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['accent'], fg='white').pack()
-        tk.Label(locations_card, text="Unique Locations Visited", font=('Segoe UI', 10),
+        tk.Label(locations_card, text="Locations Visited ", font=('Segoe UI', 10),
                 bg=self.colors['accent'], fg='white').pack()
         
         # Filter section
