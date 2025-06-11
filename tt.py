@@ -49,14 +49,31 @@ class ModernTravelCalendar:
         # Report window tracking
         self.report_window = None
         
+        # Deferred update flags
+        self._needs_calendar_update = False
+        self._needs_location_update = False
+        
         # Current display
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
+        
+        # Bind focus events to handle deferred updates
+        self.root.bind('<FocusIn>', self._handle_main_window_focus)
         
         self.setup_modern_styles()
         self.setup_ui()
         self.update_calendar_display()
         self.update_location_dropdown()
+    
+    def _handle_main_window_focus(self, event=None):
+        """Handle when main window receives focus - apply any pending updates"""
+        if self._needs_calendar_update:
+            self.update_calendar_display()
+            self._needs_calendar_update = False
+        
+        if self._needs_location_update:
+            self.update_location_dropdown()
+            self._needs_location_update = False
     
     def setup_modern_styles(self):
         """Configure modern ttk styles"""
@@ -381,6 +398,19 @@ class ModernTravelCalendar:
         with open(self.data_file, 'w') as f:
             json.dump(self.travel_records, f, indent=2)
     
+    def get_available_years(self) -> List[int]:
+        """Get list of years from travel records"""
+        years = set()
+        for record in self.travel_records:
+            try:
+                start_year = datetime.strptime(record['start_date'], '%Y-%m-%d').year
+                end_year = datetime.strptime(record['end_date'], '%Y-%m-%d').year
+                years.add(start_year)
+                years.add(end_year)
+            except:
+                continue
+        return sorted(list(years), reverse=True)  # Most recent years first
+    
     def update_location_dropdown(self):
         """Update the location combobox with unique locations from travel records"""
         locations = set()
@@ -591,6 +621,14 @@ class ModernTravelCalendar:
         self.save_data()
         self.update_calendar_display()
         self.update_location_dropdown()
+        
+        # Update year dropdown in report window if it's open
+        if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
+            hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and 
+            self.report_window and self.report_window.winfo_exists()):
+            self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
+                                     self._current_filter_vars, self._current_records_tree)
+        
         self.clear_form()
         
         messagebox.showinfo("Success", success_message)
@@ -629,7 +667,7 @@ class ModernTravelCalendar:
                                   background='#fef3c7', 
                                   foreground='#d97706')
     
-    def update_records_display_filtered(self, records_tree, filter_vars):
+    def update_records_display_filtered(self, records_tree, filter_vars, year_var=None):
         """Update the travel records display with filtering applied"""
         # Clear existing items
         for item in records_tree.get_children():
@@ -651,12 +689,35 @@ class ModernTravelCalendar:
         if not enabled_filters:
             return
         
-        # Filter and sort records
+        # Get selected year
+        selected_year = None
+        if year_var and year_var.get() != "All Years":
+            try:
+                selected_year = int(year_var.get())
+            except:
+                pass
+        
+        # Filter records
         filtered_records = []
         for record in self.travel_records:
+            # Check status filter
             record_type = self.get_record_color_tag(record)
-            if record_type in enabled_filters:
-                filtered_records.append(record)
+            if record_type not in enabled_filters:
+                continue
+            
+            # Check year filter
+            if selected_year is not None:
+                try:
+                    start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                    end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                    
+                    # Include record if it overlaps with the selected year
+                    if not (start_date.year <= selected_year <= end_date.year):
+                        continue
+                except:
+                    continue
+            
+            filtered_records.append(record)
         
         # Sort by start date (most recent first)
         sorted_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=True)
@@ -756,13 +817,43 @@ class ModernTravelCalendar:
                 self.edit_mode = True
                 self.edit_index = i
                 
-                # Update calendar display and close report window
-                self.update_calendar_display()
+                # Mark calendar update as needed but don't update now
+                self._needs_calendar_update = True
+                
+                # Close report window and show main window
                 self._on_report_window_close()
+                
+                # Bring main window to front for editing
+                self.root.lift()
+                self.root.focus_force()
                 
                 messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Click 'Save Travel' to update.")
                 break
     
+    def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree):
+        """Update the year dropdown with current available years"""
+        # Get available years
+        available_years = self.get_available_years()
+        current_year = datetime.now().year
+        
+        # Store currently selected year
+        current_selection = year_var.get()
+        
+        # Update dropdown options
+        year_options = ["All Years"] + [str(year) for year in available_years]
+        year_combo['values'] = year_options
+        
+        # Preserve selection if still valid, otherwise reset to sensible default
+        if current_selection in year_options:
+            year_var.set(current_selection)
+        elif str(current_year) in year_options:
+            year_var.set(str(current_year))
+        else:
+            year_var.set("All Years")
+        
+        # Refresh the records display with updated year filter
+        self.update_records_display_filtered(records_tree, filter_vars, year_var)
+
     def delete_record(self, records_tree, report_window=None):
         """Delete selected travel record from the report window"""
         selection = records_tree.selection()
@@ -773,7 +864,18 @@ class ModernTravelCalendar:
                 self.report_window.focus_force()
             return
         
+        # Keep report window focused before and after dialog
+        if self.report_window and self.report_window.winfo_exists():
+            self.report_window.lift()
+            self.report_window.focus_force()
+        
         if messagebox.askyesno("Confirm", "🗑️ Are you sure you want to delete this record?"):
+            # Immediately restore focus to report window after confirmation
+            if self.report_window and self.report_window.winfo_exists():
+                self.report_window.lift()
+                self.report_window.focus_force()
+                self.report_window.attributes('-topmost', True)
+            
             item = selection[0]
             values = records_tree.item(item, 'values')
             
@@ -790,13 +892,30 @@ class ModernTravelCalendar:
                     break
             
             self.save_data()
-            self.update_records_display(records_tree)
-            self.update_calendar_display()
-            self.update_location_dropdown()
-        
-        if self.report_window:
-            self.report_window.lift()
-            self.report_window.focus_force()
+            
+            # Update year dropdown and records display in report window only
+            if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
+                hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree')):
+                self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
+                                         self._current_filter_vars, self._current_records_tree)
+            else:
+                # Fallback: just update records display
+                self.update_records_display(records_tree)
+            
+            # Mark main window updates as needed (but don't do them now)
+            self._needs_calendar_update = True
+            self._needs_location_update = True
+            
+            # Remove topmost after a brief moment and ensure focus stays
+            if self.report_window and self.report_window.winfo_exists():
+                self.report_window.after(200, lambda: self.report_window.attributes('-topmost', False))
+                self.report_window.lift()
+                self.report_window.focus_force()
+        else:
+            # User cancelled - ensure report window stays focused
+            if self.report_window and self.report_window.winfo_exists():
+                self.report_window.lift()
+                self.report_window.focus_force()
     
     def sort_records(self, records_tree, column):
         """Sort records by the specified column"""
@@ -989,7 +1108,7 @@ class ModernTravelCalendar:
         filter_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         
         filter_inner = tk.Frame(filter_frame, bg=self.colors['surface'])
-        filter_inner.pack(fill=tk.X)
+        filter_inner.pack(fill=tk.X, pady=10)
         
         # Create filter variables (all enabled by default)
         filter_vars = {
@@ -998,6 +1117,40 @@ class ModernTravelCalendar:
             'future': tk.BooleanVar(value=True)
         }
         
+        # Get available years
+        available_years = self.get_available_years()
+        current_year = datetime.now().year
+        
+        # Year filter
+        tk.Label(filter_inner, text="📅 Year:", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
+        
+        year_var = tk.StringVar()
+        year_combo = ttk.Combobox(filter_inner, textvariable=year_var, 
+                                 style='Modern.TCombobox', 
+                                 font=('Segoe UI', 10),
+                                 width=12, state="readonly")
+        
+        # Populate year dropdown
+        year_options = ["All Years"] + [str(year) for year in available_years]
+        year_combo['values'] = year_options
+        
+        # Set default to current year if available, otherwise "All Years"
+        if str(current_year) in year_options:
+            year_var.set(str(current_year))
+        else:
+            year_var.set("All Years")
+        
+        year_combo.pack(side=tk.LEFT, padx=(0, 30))
+        
+        # Store references for updating when records are modified
+        self._current_year_combo = year_combo
+        self._current_year_var = year_var
+        self._current_filter_vars = filter_vars
+        
+        # Status filters (same row)
         filter_items = [
             ("Past Travel", "#f1f5f9", "#64748b", filter_vars['past']),
             ("Current Travel", "#dcfce7", "#15803d", filter_vars['current']),
@@ -1016,7 +1169,7 @@ class ModernTravelCalendar:
                                     bg=self.colors['surface'],
                                     activebackground=self.colors['surface'],
                                     relief='flat',
-                                    command=lambda: self.update_records_display_filtered(records_tree, filter_vars))
+                                    command=lambda: self.update_records_display_filtered(records_tree, filter_vars, year_var))
             checkbox.pack(side=tk.LEFT, padx=(0, 2))
             
             # Color-coded label to the right of checkbox
@@ -1025,6 +1178,10 @@ class ModernTravelCalendar:
                                   relief="solid", borderwidth=1,
                                   font=('Segoe UI', 10))
             filter_label.pack(side=tk.LEFT)
+        
+        # Bind year selection change
+        year_combo.bind('<<ComboboxSelected>>', 
+                       lambda e: self.update_records_display_filtered(records_tree, filter_vars, year_var))
         
         # Travel records
         records_frame = ttk.LabelFrame(main_container, text="📋 Travel Records", style='Card.TLabelframe')
@@ -1064,8 +1221,11 @@ class ModernTravelCalendar:
         records_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
-        # Update records display with filtering
-        self.update_records_display_filtered(records_tree, filter_vars)
+        # Store reference to records tree for updates
+        self._current_records_tree = records_tree
+        
+        # Initial records display with filtering
+        self.update_records_display_filtered(records_tree, filter_vars, year_var)
         
         # Action buttons
         buttons_frame = tk.Frame(main_container, bg=self.colors['background'])
@@ -1100,6 +1260,25 @@ class ModernTravelCalendar:
         if self.report_window:
             self.report_window.destroy()
             self.report_window = None
+            
+        # Apply any pending updates now that report window is closed
+        if self._needs_calendar_update:
+            self.update_calendar_display()
+            self._needs_calendar_update = False
+        
+        if self._needs_location_update:
+            self.update_location_dropdown()
+            self._needs_location_update = False
+            
+        # Clear stored references
+        if hasattr(self, '_current_year_combo'):
+            delattr(self, '_current_year_combo')
+        if hasattr(self, '_current_year_var'):
+            delattr(self, '_current_year_var')
+        if hasattr(self, '_current_filter_vars'):
+            delattr(self, '_current_filter_vars')
+        if hasattr(self, '_current_records_tree'):
+            delattr(self, '_current_records_tree')
 
 def main():
     root = tk.Tk()
