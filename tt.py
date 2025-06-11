@@ -1109,9 +1109,9 @@ class ModernTravelCalendar:
         
         # Status filters (same row)
         filter_items = [
-            ("Past Travel", "#f1f5f9", "#64748b", filter_vars['past']),
-            ("Current Travel", "#dcfce7", "#15803d", filter_vars['current']),
-            ("Future Travel", "#fef3c7", "#d97706", filter_vars['future'])
+            ("Past", "#f1f5f9", "#64748b", filter_vars['past']),
+            ("Current", "#dcfce7", "#15803d", filter_vars['current']),
+            ("Future", "#fef3c7", "#d97706", filter_vars['future'])
         ]
         
         # Create filter checkboxes with labels
