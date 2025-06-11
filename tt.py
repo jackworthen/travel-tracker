@@ -11,7 +11,7 @@ class ModernTravelCalendar:
         self.root = root
         self.root.title("Travel Tracker")
         self.root.geometry("1000x720")
-        
+
         # Modern color scheme
         self.colors = {
             'primary': '#2563eb',      # Modern blue
@@ -49,31 +49,14 @@ class ModernTravelCalendar:
         # Report window tracking
         self.report_window = None
         
-        # Deferred update flags
-        self._needs_calendar_update = False
-        self._needs_location_update = False
-        
         # Current display
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
-        
-        # Bind focus events to handle deferred updates
-        self.root.bind('<FocusIn>', self._handle_main_window_focus)
         
         self.setup_modern_styles()
         self.setup_ui()
         self.update_calendar_display()
         self.update_location_dropdown()
-    
-    def _handle_main_window_focus(self, event=None):
-        """Handle when main window receives focus - apply any pending updates"""
-        if self._needs_calendar_update:
-            self.update_calendar_display()
-            self._needs_calendar_update = False
-        
-        if self._needs_location_update:
-            self.update_location_dropdown()
-            self._needs_location_update = False
     
     def setup_modern_styles(self):
         """Configure modern ttk styles"""
@@ -817,15 +800,9 @@ class ModernTravelCalendar:
                 self.edit_mode = True
                 self.edit_index = i
                 
-                # Mark calendar update as needed but don't update now
-                self._needs_calendar_update = True
-                
-                # Close report window and show main window
+                # Update calendar display and close report window
+                self.update_calendar_display()
                 self._on_report_window_close()
-                
-                # Bring main window to front for editing
-                self.root.lift()
-                self.root.focus_force()
                 
                 messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Click 'Save Travel' to update.")
                 break
@@ -864,18 +841,7 @@ class ModernTravelCalendar:
                 self.report_window.focus_force()
             return
         
-        # Keep report window focused before and after dialog
-        if self.report_window and self.report_window.winfo_exists():
-            self.report_window.lift()
-            self.report_window.focus_force()
-        
         if messagebox.askyesno("Confirm", "🗑️ Are you sure you want to delete this record?"):
-            # Immediately restore focus to report window after confirmation
-            if self.report_window and self.report_window.winfo_exists():
-                self.report_window.lift()
-                self.report_window.focus_force()
-                self.report_window.attributes('-topmost', True)
-            
             item = selection[0]
             values = records_tree.item(item, 'values')
             
@@ -892,8 +858,10 @@ class ModernTravelCalendar:
                     break
             
             self.save_data()
+            self.update_calendar_display()
+            self.update_location_dropdown()
             
-            # Update year dropdown and records display in report window only
+            # Update year dropdown and records display
             if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
                 hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree')):
                 self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
@@ -901,21 +869,10 @@ class ModernTravelCalendar:
             else:
                 # Fallback: just update records display
                 self.update_records_display(records_tree)
-            
-            # Mark main window updates as needed (but don't do them now)
-            self._needs_calendar_update = True
-            self._needs_location_update = True
-            
-            # Remove topmost after a brief moment and ensure focus stays
-            if self.report_window and self.report_window.winfo_exists():
-                self.report_window.after(200, lambda: self.report_window.attributes('-topmost', False))
-                self.report_window.lift()
-                self.report_window.focus_force()
-        else:
-            # User cancelled - ensure report window stays focused
-            if self.report_window and self.report_window.winfo_exists():
-                self.report_window.lift()
-                self.report_window.focus_force()
+        
+        if self.report_window:
+            self.report_window.lift()
+            self.report_window.focus_force()
     
     def sort_records(self, records_tree, column):
         """Sort records by the specified column"""
@@ -1260,15 +1217,6 @@ class ModernTravelCalendar:
         if self.report_window:
             self.report_window.destroy()
             self.report_window = None
-            
-        # Apply any pending updates now that report window is closed
-        if self._needs_calendar_update:
-            self.update_calendar_display()
-            self._needs_calendar_update = False
-        
-        if self._needs_location_update:
-            self.update_location_dropdown()
-            self._needs_location_update = False
             
         # Clear stored references
         if hasattr(self, '_current_year_combo'):
