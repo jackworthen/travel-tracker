@@ -1000,7 +1000,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("770x800")
+        report_window.geometry("785x800")
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
