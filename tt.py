@@ -247,15 +247,33 @@ class ModernTravelCalendar:
         if self.validation_settings['warn_future_dates']:
             future_limit = current_date + timedelta(days=self.validation_settings['future_warning_days'])
             if start_date > future_limit:
-                years = self.validation_settings['future_warning_days'] // 365
-                warnings.append(f"Start date is more than {years} years in the future")
+                days = self.validation_settings['future_warning_days']
+                if days >= 365:
+                    years = days // 365
+                    remaining_days = days % 365
+                    if remaining_days == 0:
+                        time_desc = f"{years} year{'s' if years != 1 else ''}"
+                    else:
+                        time_desc = f"{years} year{'s' if years != 1 else ''} and {remaining_days} day{'s' if remaining_days != 1 else ''}"
+                else:
+                    time_desc = f"{days} day{'s' if days != 1 else ''}"
+                warnings.append(f"Start date is more than {time_desc} in the future")
         
         # Past date warnings
         if self.validation_settings['warn_past_dates']:
             past_limit = current_date - timedelta(days=self.validation_settings['past_warning_days'])
             if end_date < past_limit:
-                years = self.validation_settings['past_warning_days'] // 365
-                warnings.append(f"End date is more than {years} years in the past")
+                days = self.validation_settings['past_warning_days']
+                if days >= 365:
+                    years = days // 365
+                    remaining_days = days % 365
+                    if remaining_days == 0:
+                        time_desc = f"{years} year{'s' if years != 1 else ''}"
+                    else:
+                        time_desc = f"{years} year{'s' if years != 1 else ''} and {remaining_days} day{'s' if remaining_days != 1 else ''}"
+                else:
+                    time_desc = f"{days} day{'s' if days != 1 else ''}"
+                warnings.append(f"End date is more than {time_desc} in the past")
         
         return warnings
     
