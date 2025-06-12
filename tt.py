@@ -30,7 +30,7 @@ class ModernTravelCalendar:
         }
         
         self.root.configure(bg=self.colors['background'])
-        
+
         # Data storage
         self.data_file = "travel_data.json"
         self.travel_records = self.load_data()
