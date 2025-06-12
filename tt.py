@@ -39,6 +39,7 @@ class ModernTravelCalendar:
 
         # Data storage - now uses OS-specific paths
         self.data_file = self.get_data_file_path()
+        self.config_file = self.get_config_file_path()
         self.travel_records = self.load_data()
         self.selected_start_date = None
         self.selected_end_date = None
@@ -59,7 +60,7 @@ class ModernTravelCalendar:
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
         
-        # Validation settings
+        # Validation settings - set defaults first, then load from config
         self.validation_settings = {
             'allow_overlaps': False,
             'warn_future_dates': True,
@@ -69,6 +70,7 @@ class ModernTravelCalendar:
             'max_location_length': 100,
             'max_comment_length': 1000
         }
+        self.load_config()  # Load saved settings from config file
         
         self.setup_modern_styles()
         self.setup_menu()
@@ -154,6 +156,37 @@ class ModernTravelCalendar:
                 return str(old_data_file)
         
         return str(new_data_file)
+    
+    def get_config_file_path(self):
+        """Get the full path to the config.json file"""
+        data_dir = self.get_data_directory()
+        return str(data_dir / "config.json")
+    
+    def load_config(self):
+        """Load configuration settings from config.json file"""
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    config_data = json.load(f)
+                    # Update validation settings with saved values
+                    if 'validation_settings' in config_data:
+                        self.validation_settings.update(config_data['validation_settings'])
+                        print(f"Loaded configuration from {self.config_file}")
+            except Exception as e:
+                print(f"Error loading config: {e}. Using default settings.")
+    
+    def save_config(self):
+        """Save configuration settings to config.json file"""
+        try:
+            config_data = {
+                'validation_settings': self.validation_settings
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(config_data, f, indent=2)
+            print(f"Configuration saved to {self.config_file}")
+        except Exception as e:
+            print(f"Error saving config: {e}")
+            messagebox.showerror("Save Error", f"Could not save configuration: {e}")
     
     # ========== VALIDATION METHODS ==========
     
@@ -873,8 +906,11 @@ class ModernTravelCalendar:
                 self.validation_settings['max_location_length'] = int(settings_vars['max_location_length'].get())
                 self.validation_settings['max_comment_length'] = int(settings_vars['max_comment_length'].get())
                 
+                # Save settings to config file
+                self.save_config()
+                
                 dialog.destroy()
-                messagebox.showinfo("Settings Saved", "✅ Validation settings have been updated.")
+                messagebox.showinfo("Settings Saved", "✅ Validation settings have been updated and saved.")
             except ValueError as e:
                 messagebox.showerror("Invalid Input", f"Please enter valid numbers for all numeric fields.")
         
