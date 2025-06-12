@@ -10,7 +10,7 @@ import subprocess
 import webbrowser
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 class ModernTravelCalendar:
     def __init__(self, root):
@@ -58,6 +58,17 @@ class ModernTravelCalendar:
         # Current display
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
+        
+        # Validation settings
+        self.validation_settings = {
+            'allow_overlaps': False,
+            'warn_future_dates': True,
+            'future_warning_days': 730,  # 2 years
+            'warn_past_dates': True,
+            'past_warning_days': 1095,   # 3 years
+            'max_location_length': 100,
+            'max_comment_length': 1000
+        }
         
         self.setup_modern_styles()
         self.setup_menu()
@@ -143,6 +154,423 @@ class ModernTravelCalendar:
                 return str(old_data_file)
         
         return str(new_data_file)
+    
+    # ========== VALIDATION METHODS ==========
+    
+    def validate_date_format(self, date_string: str) -> Tuple[bool, Optional[datetime], str]:
+        """
+        Validate date format and return parsed date.
+        Returns: (is_valid, parsed_date, error_message)
+        """
+        if not date_string or not date_string.strip():
+            return False, None, "Date cannot be empty"
+        
+        date_string = date_string.strip()
+        
+        # Try multiple date formats
+        formats = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%m-%d-%Y', '%d-%m-%Y']
+        
+        for fmt in formats:
+            try:
+                parsed_date = datetime.strptime(date_string, fmt)
+                # Check for reasonable date range (not too far in past/future)
+                min_date = datetime(1900, 1, 1)
+                max_date = datetime(2100, 12, 31)
+                
+                if parsed_date < min_date:
+                    return False, None, f"Date cannot be before {min_date.strftime('%Y-%m-%d')}"
+                if parsed_date > max_date:
+                    return False, None, f"Date cannot be after {max_date.strftime('%Y-%m-%d')}"
+                
+                return True, parsed_date, ""
+            except ValueError:
+                continue
+        
+        return False, None, f"Invalid date format. Please use YYYY-MM-DD, MM/DD/YYYY, or DD/MM/YYYY"
+    
+    def validate_date_range(self, start_date: datetime, end_date: datetime) -> Tuple[bool, str]:
+        """
+        Validate date range logic.
+        Returns: (is_valid, error_message)
+        """
+        if end_date < start_date:
+            return False, "End date cannot be before start date"
+        
+        # Check for excessively long trips (more than 2 years)
+        if (end_date - start_date).days > 730:
+            return False, "Trip duration cannot exceed 2 years. Please split into multiple trips."
+        
+        return True, ""
+    
+    def validate_date_warnings(self, start_date: datetime, end_date: datetime) -> List[str]:
+        """
+        Check for date-related warnings (not blocking errors).
+        Returns: list of warning messages
+        """
+        warnings = []
+        current_date = datetime.now()
+        
+        # Future date warnings
+        if self.validation_settings['warn_future_dates']:
+            future_limit = current_date + timedelta(days=self.validation_settings['future_warning_days'])
+            if start_date > future_limit:
+                years = self.validation_settings['future_warning_days'] // 365
+                warnings.append(f"Start date is more than {years} years in the future")
+        
+        # Past date warnings
+        if self.validation_settings['warn_past_dates']:
+            past_limit = current_date - timedelta(days=self.validation_settings['past_warning_days'])
+            if end_date < past_limit:
+                years = self.validation_settings['past_warning_days'] // 365
+                warnings.append(f"End date is more than {years} years in the past")
+        
+        return warnings
+    
+    def check_date_overlap(self, start_date: datetime, end_date: datetime, exclude_index: Optional[int] = None) -> Tuple[bool, List[Dict]]:
+        """
+        Check if the given date range overlaps with existing travel records.
+        Returns: (has_overlap, list_of_conflicting_records)
+        """
+        if self.validation_settings['allow_overlaps']:
+            return False, []
+        
+        conflicting_records = []
+        
+        for i, record in enumerate(self.travel_records):
+            # Skip the record being edited
+            if exclude_index is not None and i == exclude_index:
+                continue
+            
+            try:
+                existing_start = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                existing_end = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Check for overlap: two ranges overlap if start1 <= end2 and start2 <= end1
+                if start_date <= existing_end and existing_start <= end_date:
+                    conflicting_records.append({
+                        'index': i,
+                        'record': record,
+                        'start_date': existing_start,
+                        'end_date': existing_end
+                    })
+            except ValueError:
+                # Skip records with invalid dates
+                continue
+        
+        return len(conflicting_records) > 0, conflicting_records
+    
+    def validate_location(self, location: str) -> Tuple[bool, str, List[str]]:
+        """
+        Validate location input.
+        Returns: (is_valid, cleaned_location, warnings)
+        """
+        if not location or not location.strip():
+            return False, "", ["Location cannot be empty"]
+        
+        cleaned_location = location.strip()
+        warnings = []
+        
+        # Check length
+        if len(cleaned_location) > self.validation_settings['max_location_length']:
+            return False, cleaned_location, [f"Location name too long (max {self.validation_settings['max_location_length']} characters)"]
+        
+        # Check for suspicious characters
+        suspicious_chars = ['<', '>', '"', "'", '\\', '/', '|']
+        if any(char in cleaned_location for char in suspicious_chars):
+            warnings.append("Location contains special characters that might cause issues")
+        
+        # Check for all caps (suggest proper case)
+        if cleaned_location.isupper() and len(cleaned_location) > 3:
+            warnings.append("Consider using proper case instead of ALL CAPS")
+        
+        return True, cleaned_location, warnings
+    
+    def validate_comment(self, comment: str) -> Tuple[bool, str, List[str]]:
+        """
+        Validate comment/notes input.
+        Returns: (is_valid, cleaned_comment, warnings)
+        """
+        cleaned_comment = comment.strip() if comment else ""
+        warnings = []
+        
+        # Check length
+        if len(cleaned_comment) > self.validation_settings['max_comment_length']:
+            return False, cleaned_comment, [f"Notes too long (max {self.validation_settings['max_comment_length']} characters)"]
+        
+        return True, cleaned_comment, warnings
+    
+    def show_overlap_dialog(self, conflicting_records: List[Dict]) -> str:
+        """
+        Show dialog for handling overlapping dates.
+        Returns: 'cancel', 'ignore', or 'adjust'
+        """
+        dialog = tk.Toplevel(self.root)
+        dialog.title("⚠️ Overlapping Travel Dates")
+        dialog.geometry("600x400")
+        dialog.configure(bg=self.colors['background'])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
+        
+        result = {'action': 'cancel'}
+        
+        # Main frame
+        main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Warning icon and message
+        header_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(header_frame, text="⚠️", 
+                font=('Segoe UI', 32), 
+                fg=self.colors['warning'],
+                bg=self.colors['background']).pack(side=tk.LEFT, padx=(0, 15))
+        
+        message_frame = tk.Frame(header_frame, bg=self.colors['background'])
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        tk.Label(message_frame, text="Overlapping Travel Dates Detected", 
+                font=('Segoe UI', 16, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(anchor=tk.W)
+        
+        tk.Label(message_frame, text="The dates you entered overlap with existing travel records:", 
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['background']).pack(anchor=tk.W, pady=(5, 0))
+        
+        # Conflicts list
+        conflicts_frame = ttk.LabelFrame(main_frame, text="Conflicting Records", style='Card.TLabelframe')
+        conflicts_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        conflicts_text = tk.Text(conflicts_frame, height=8, wrap=tk.WORD,
+                               font=('Segoe UI', 10),
+                               bg=self.colors['surface'],
+                               fg=self.colors['text'],
+                               relief='flat', padx=15, pady=15)
+        conflicts_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for i, conflict in enumerate(conflicting_records, 1):
+            record = conflict['record']
+            start_str = conflict['start_date'].strftime('%Y-%m-%d')
+            end_str = conflict['end_date'].strftime('%Y-%m-%d')
+            location = record['location']
+            
+            conflict_text = f"{i}. {start_str} to {end_str} - {location}\n"
+            if record.get('comment'):
+                conflict_text += f"   Notes: {record['comment'][:100]}{'...' if len(record['comment']) > 100 else ''}\n"
+            conflict_text += "\n"
+            
+            conflicts_text.insert(tk.END, conflict_text)
+        
+        conflicts_text.config(state=tk.DISABLED)
+        
+        # Buttons
+        buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        buttons_frame.pack(fill=tk.X)
+        
+        def on_cancel():
+            result['action'] = 'cancel'
+            dialog.destroy()
+        
+        def on_ignore():
+            result['action'] = 'ignore'
+            dialog.destroy()
+        
+        def on_adjust():
+            result['action'] = 'adjust'
+            dialog.destroy()
+        
+        tk.Button(buttons_frame, text="❌ Cancel",
+                 bg=self.colors['secondary'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=on_cancel).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        tk.Button(buttons_frame, text="⚠️ Save Anyway",
+                 bg=self.colors['warning'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=on_ignore).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        tk.Button(buttons_frame, text="✏️ Adjust Dates",
+                 bg=self.colors['primary'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=on_adjust).pack(side=tk.RIGHT)
+        
+        # Wait for dialog to close
+        self.root.wait_window(dialog)
+        return result['action']
+    
+    def show_validation_errors_dialog(self, errors: List[str]) -> None:
+        """
+        Show styled dialog for validation errors.
+        """
+        dialog = tk.Toplevel(self.root)
+        dialog.title("❌ Validation Errors")
+        dialog.geometry("550x400")
+        dialog.configure(bg=self.colors['background'])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
+        
+        # Main frame
+        main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Error icon and message
+        header_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(header_frame, text="❌", 
+                font=('Segoe UI', 32), 
+                fg=self.colors['danger'],
+                bg=self.colors['background']).pack(side=tk.LEFT, padx=(0, 15))
+        
+        message_frame = tk.Frame(header_frame, bg=self.colors['background'])
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        tk.Label(message_frame, text="Validation Errors", 
+                font=('Segoe UI', 16, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(anchor=tk.W)
+        
+        tk.Label(message_frame, text="Please fix the following issues before saving:", 
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['background']).pack(anchor=tk.W, pady=(5, 0))
+        
+        # Errors list
+        errors_frame = ttk.LabelFrame(main_frame, text="Issues Found", style='Card.TLabelframe')
+        errors_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        errors_text = tk.Text(errors_frame, height=10, wrap=tk.WORD,
+                             font=('Segoe UI', 11),
+                             bg=self.colors['surface'],
+                             fg=self.colors['text'],
+                             relief='flat', padx=20, pady=15)
+        errors_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for i, error in enumerate(errors, 1):
+            error_text = f"• {error}\n\n"
+            errors_text.insert(tk.END, error_text)
+        
+        errors_text.config(state=tk.DISABLED)
+        
+        # OK button
+        buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        buttons_frame.pack(fill=tk.X)
+        
+        def on_ok():
+            dialog.destroy()
+        
+        tk.Button(buttons_frame, text="✅ OK",
+                 bg=self.colors['primary'], fg='white',
+                 font=('Segoe UI', 12, 'bold'),
+                 relief='flat', bd=0, padx=30, pady=12,
+                 command=on_ok).pack()
+        
+        # Wait for dialog to close
+        self.root.wait_window(dialog)
+    
+    def show_warnings_dialog(self, warnings: List[str]) -> bool:
+        """
+        Show styled dialog for validation warnings.
+        Returns: True to continue, False to cancel
+        """
+        if not warnings:
+            return True
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.title("⚠️ Validation Warnings")
+        dialog.geometry("550x400")
+        dialog.configure(bg=self.colors['background'])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
+        
+        result = {'continue': False}
+        
+        # Main frame
+        main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Warning icon and message
+        header_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(header_frame, text="⚠️", 
+                font=('Segoe UI', 32), 
+                fg=self.colors['warning'],
+                bg=self.colors['background']).pack(side=tk.LEFT, padx=(0, 15))
+        
+        message_frame = tk.Frame(header_frame, bg=self.colors['background'])
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        tk.Label(message_frame, text="Validation Warnings", 
+                font=('Segoe UI', 16, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(anchor=tk.W)
+        
+        tk.Label(message_frame, text="The following issues were detected:", 
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['background']).pack(anchor=tk.W, pady=(5, 0))
+        
+        # Warnings list
+        warnings_frame = ttk.LabelFrame(main_frame, text="Warnings", style='Card.TLabelframe')
+        warnings_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        warnings_text = tk.Text(warnings_frame, height=8, wrap=tk.WORD,
+                               font=('Segoe UI', 11),
+                               bg=self.colors['surface'],
+                               fg=self.colors['text'],
+                               relief='flat', padx=20, pady=15)
+        warnings_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for i, warning in enumerate(warnings, 1):
+            warning_text = f"• {warning}\n\n"
+            warnings_text.insert(tk.END, warning_text)
+        
+        warnings_text.config(state=tk.DISABLED)
+        
+        # Buttons
+        buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        buttons_frame.pack(fill=tk.X)
+        
+        def on_cancel():
+            result['continue'] = False
+            dialog.destroy()
+        
+        def on_continue():
+            result['continue'] = True
+            dialog.destroy()
+        
+        tk.Button(buttons_frame, text="❌ Cancel",
+                 bg=self.colors['secondary'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=on_cancel).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        tk.Button(buttons_frame, text="⚠️ Continue Anyway",
+                 bg=self.colors['warning'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=on_continue).pack(side=tk.RIGHT)
+        
+        # Wait for dialog to close
+        self.root.wait_window(dialog)
+        return result['continue']
+    
+    # ========== END VALIDATION METHODS ==========
     
     def setup_modern_styles(self):
         """Configure modern ttk styles"""
@@ -302,6 +730,11 @@ class ModernTravelCalendar:
         view_menu.add_separator()
         view_menu.add_command(label="Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
         
+        # Tools menu (new - for validation settings)
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Validation Settings", command=self.show_validation_settings)
+        
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
@@ -311,6 +744,137 @@ class ModernTravelCalendar:
         self.root.bind('<Control-q>', lambda e: self.exit_application())
         self.root.bind('<Control-r>', lambda e: self.show_report())
         self.root.bind('<Control-d>', lambda e: self.open_data_location())
+    
+    def show_validation_settings(self):
+        """Show dialog for configuring validation settings"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("⚙️ Validation Settings")
+        dialog.geometry("500x600")
+        dialog.configure(bg=self.colors['background'])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 100, self.root.winfo_rooty() + 50))
+        
+        # Main frame
+        main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        tk.Label(main_frame, text="⚙️ Validation Settings", 
+                font=('Segoe UI', 16, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(pady=(0, 20))
+        
+        # Settings variables
+        settings_vars = {}
+        
+        # Allow overlaps setting
+        overlap_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        overlap_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
+        tk.Checkbutton(overlap_frame, text="Allow overlapping travel dates",
+                      variable=settings_vars['allow_overlaps'],
+                      bg=self.colors['background'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+        
+        # Future date warnings
+        future_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        future_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
+        tk.Checkbutton(future_frame, text="Warn about far future dates",
+                      variable=settings_vars['warn_future_dates'],
+                      bg=self.colors['background'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+        
+        tk.Label(future_frame, text="Days in future to warn:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['background']).pack(anchor=tk.W, padx=(20, 0))
+        
+        settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
+        future_entry = tk.Entry(future_frame, textvariable=settings_vars['future_warning_days'],
+                               width=10, font=('Segoe UI', 10))
+        future_entry.pack(anchor=tk.W, padx=(20, 0), pady=(5, 0))
+        
+        # Past date warnings
+        past_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        past_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
+        tk.Checkbutton(past_frame, text="Warn about old past dates",
+                      variable=settings_vars['warn_past_dates'],
+                      bg=self.colors['background'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+        
+        tk.Label(past_frame, text="Days in past to warn:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['background']).pack(anchor=tk.W, padx=(20, 0))
+        
+        settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
+        past_entry = tk.Entry(past_frame, textvariable=settings_vars['past_warning_days'],
+                             width=10, font=('Segoe UI', 10))
+        past_entry.pack(anchor=tk.W, padx=(20, 0), pady=(5, 0))
+        
+        # Length limits
+        length_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        length_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(length_frame, text="Maximum location length:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(anchor=tk.W)
+        
+        settings_vars['max_location_length'] = tk.StringVar(value=str(self.validation_settings['max_location_length']))
+        loc_entry = tk.Entry(length_frame, textvariable=settings_vars['max_location_length'],
+                            width=10, font=('Segoe UI', 10))
+        loc_entry.pack(anchor=tk.W, pady=(5, 0))
+        
+        tk.Label(length_frame, text="Maximum comment length:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['background']).pack(anchor=tk.W, pady=(15, 0))
+        
+        settings_vars['max_comment_length'] = tk.StringVar(value=str(self.validation_settings['max_comment_length']))
+        comment_entry = tk.Entry(length_frame, textvariable=settings_vars['max_comment_length'],
+                                width=10, font=('Segoe UI', 10))
+        comment_entry.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Buttons
+        buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
+        buttons_frame.pack(fill=tk.X, pady=(30, 0))
+        
+        def save_settings():
+            try:
+                # Update settings
+                self.validation_settings['allow_overlaps'] = settings_vars['allow_overlaps'].get()
+                self.validation_settings['warn_future_dates'] = settings_vars['warn_future_dates'].get()
+                self.validation_settings['warn_past_dates'] = settings_vars['warn_past_dates'].get()
+                self.validation_settings['future_warning_days'] = int(settings_vars['future_warning_days'].get())
+                self.validation_settings['past_warning_days'] = int(settings_vars['past_warning_days'].get())
+                self.validation_settings['max_location_length'] = int(settings_vars['max_location_length'].get())
+                self.validation_settings['max_comment_length'] = int(settings_vars['max_comment_length'].get())
+                
+                dialog.destroy()
+                messagebox.showinfo("Settings Saved", "✅ Validation settings have been updated.")
+            except ValueError as e:
+                messagebox.showerror("Invalid Input", f"Please enter valid numbers for all numeric fields.")
+        
+        tk.Button(buttons_frame, text="💾 Save Settings",
+                 bg=self.colors['success'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=save_settings).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        tk.Button(buttons_frame, text="❌ Cancel",
+                 bg=self.colors['secondary'], fg='white',
+                 font=('Segoe UI', 11, 'bold'),
+                 relief='flat', bd=0, padx=20, pady=10,
+                 command=dialog.destroy).pack(side=tk.RIGHT)
     
     def open_data_location(self):
         """Open the directory containing the travel data file"""
@@ -707,43 +1271,102 @@ class ModernTravelCalendar:
         self.update_calendar_display()
     
     def add_travel(self):
-        """Add a new travel record or update existing one if in edit mode"""
+        """Add a new travel record or update existing one if in edit mode - with enhanced validation"""
+        # Collect all validation errors and warnings
+        all_errors = []
+        all_warnings = []
+        
+        # === DATE VALIDATION ===
+        
         # Try to get dates from entry fields first
         start_date_str = self.start_date_entry.get().strip()
         end_date_str = self.end_date_entry.get().strip()
         
-        try:
-            if start_date_str:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-            elif self.selected_start_date:
-                start_date = self.selected_start_date
+        start_date = None
+        end_date = None
+        
+        # Validate start date
+        if start_date_str:
+            is_valid, parsed_date, error_msg = self.validate_date_format(start_date_str)
+            if is_valid:
+                start_date = parsed_date
             else:
-                messagebox.showerror("Error", "Please select or enter a start date")
-                return
-            
-            if end_date_str:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-            elif self.selected_end_date:
-                end_date = self.selected_end_date
+                all_errors.append(f"Start date: {error_msg}")
+        elif self.selected_start_date:
+            start_date = self.selected_start_date
+        else:
+            all_errors.append("Please select or enter a start date")
+        
+        # Validate end date
+        if end_date_str:
+            is_valid, parsed_date, error_msg = self.validate_date_format(end_date_str)
+            if is_valid:
+                end_date = parsed_date
             else:
-                end_date = start_date
-            
-            # Ensure end date is not before start date
-            if end_date < start_date:
-                messagebox.showerror("Error", "End date cannot be before start date")
-                return
+                all_errors.append(f"End date: {error_msg}")
+        elif self.selected_end_date:
+            end_date = self.selected_end_date
+        else:
+            end_date = start_date  # Single day trip
+        
+        # Validate date range if both dates are valid
+        if start_date and end_date:
+            is_valid, error_msg = self.validate_date_range(start_date, end_date)
+            if not is_valid:
+                all_errors.append(error_msg)
+            else:
+                # Check for date warnings
+                warnings = self.validate_date_warnings(start_date, end_date)
+                all_warnings.extend(warnings)
                 
-        except ValueError:
-            messagebox.showerror("Error", "Please enter valid dates in YYYY-MM-DD format")
+                # Check for overlapping dates
+                exclude_index = self.edit_index if self.edit_mode else None
+                has_overlap, conflicts = self.check_date_overlap(start_date, end_date, exclude_index)
+                
+                if has_overlap:
+                    # Show overlap dialog
+                    action = self.show_overlap_dialog(conflicts)
+                    if action == 'cancel':
+                        return
+                    elif action == 'adjust':
+                        # User wants to adjust dates - focus on start date field
+                        self.start_date_entry.focus_set()
+                        return
+                    # If action == 'ignore', continue with saving
+        
+        # === LOCATION VALIDATION ===
+        
+        location = self.location_entry.get()
+        is_valid, cleaned_location, location_warnings = self.validate_location(location)
+        if not is_valid:
+            all_errors.extend(location_warnings)
+        else:
+            all_warnings.extend(location_warnings)
+            location = cleaned_location
+        
+        # === COMMENT VALIDATION ===
+        
+        comment = self.comment_text.get(1.0, tk.END)
+        is_valid, cleaned_comment, comment_warnings = self.validate_comment(comment)
+        if not is_valid:
+            all_errors.extend(comment_warnings)
+        else:
+            all_warnings.extend(comment_warnings)
+            comment = cleaned_comment
+        
+        # === HANDLE ERRORS ===
+        
+        if all_errors:
+            self.show_validation_errors_dialog(all_errors)
             return
         
-        # Get location and comment
-        location = self.location_entry.get().strip()
-        comment = self.comment_text.get(1.0, tk.END).strip()
+        # === HANDLE WARNINGS ===
         
-        if not location:
-            messagebox.showerror("Error", "Please enter a location")
-            return
+        if all_warnings:
+            if not self.show_warnings_dialog(all_warnings):
+                return
+        
+        # === SAVE RECORD ===
         
         # Create record
         record = {
