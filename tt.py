@@ -3,6 +3,10 @@ from tkinter import ttk, messagebox, simpledialog
 import calendar
 import json
 import os
+import platform
+import shutil
+import sys
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 
@@ -31,8 +35,8 @@ class ModernTravelCalendar:
         
         self.root.configure(bg=self.colors['background'])
 
-        # Data storage
-        self.data_file = "travel_data.json"
+        # Data storage - now uses OS-specific paths
+        self.data_file = self.get_data_file_path()
         self.travel_records = self.load_data()
         self.selected_start_date = None
         self.selected_end_date = None
@@ -58,6 +62,85 @@ class ModernTravelCalendar:
         self.setup_ui()
         self.update_calendar_display()
         self.update_location_dropdown()
+    
+    def get_data_directory(self):
+        """Get the appropriate data directory for the current OS"""
+        app_name = "TravelTracker"
+        
+        try:
+            system = platform.system()
+            
+            if system == "Windows":
+                # Check if we're running in Microsoft Store Python (sandboxed environment)
+                if "Packages" in sys.executable and "PythonSoftwareFoundation" in sys.executable:
+                    # We're in Microsoft Store Python sandbox, use actual user AppData
+                    user_profile = os.environ.get('USERPROFILE')
+                    if user_profile:
+                        # Use USERPROFILE which should point to C:\Users\username
+                        data_dir = Path(user_profile) / 'AppData' / 'Roaming' / app_name
+                    else:
+                        # Fallback: try to extract username from USERPROFILE or other methods
+                        username = os.environ.get('USERNAME', '')
+                        if username:
+                            data_dir = Path(f"C:/Users/{username}/AppData/Roaming") / app_name
+                        else:
+                            # Last resort fallback
+                            data_dir = Path.home() / 'AppData' / 'Roaming' / app_name
+                else:
+                    if 'APPDATA' in os.environ:
+                        # Regular Python installation
+                        data_dir = Path(os.environ['APPDATA']) / app_name
+                    else:
+                        # Fallback for Windows
+                        data_dir = Path.home() / 'AppData' / 'Roaming' / app_name
+            
+            elif system == "Darwin":  # macOS
+                # Use ~/Library/Application Support/TravelTracker
+                data_dir = Path.home() / 'Library' / 'Application Support' / app_name
+            
+            elif system == "Linux":
+                # Use XDG_DATA_HOME or ~/.local/share/TravelTracker
+                if 'XDG_DATA_HOME' in os.environ:
+                    data_dir = Path(os.environ['XDG_DATA_HOME']) / app_name
+                else:
+                    data_dir = Path.home() / '.local' / 'share' / app_name
+            
+            else:
+                # Unknown OS - use current directory as fallback
+                print(f"Unknown operating system: {system}. Using current directory for data storage.")
+                return Path.cwd()
+            
+            # Create directory if it doesn't exist
+            data_dir.mkdir(parents=True, exist_ok=True)
+            return data_dir
+            
+        except Exception as e:
+            print(f"Error creating data directory: {e}. Using current directory as fallback.")
+            return Path.cwd()
+    
+    def get_data_file_path(self):
+        """Get the full path to the travel_data.json file"""
+        data_dir = self.get_data_directory()
+        new_data_file = data_dir / "travel_data.json"
+        
+        # Check for migration from old location
+        old_data_file = Path.cwd() / "travel_data.json"
+        
+        if old_data_file.exists() and not new_data_file.exists():
+            # Migrate data from old location to new location
+            try:
+                shutil.copy2(old_data_file, new_data_file)
+                print(f"Migrated travel data from {old_data_file} to {new_data_file}")
+                
+                # Optionally remove old file after successful migration
+                # Commenting out to be safe - user can manually delete if desired
+                # old_data_file.unlink()
+                
+            except Exception as e:
+                print(f"Error migrating data file: {e}. Using old location.")
+                return str(old_data_file)
+        
+        return str(new_data_file)
     
     def setup_modern_styles(self):
         """Configure modern ttk styles"""
@@ -208,10 +291,19 @@ class ModernTravelCalendar:
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Show Data Location", command=self.show_data_location)
+        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.exit_application, accelerator="(Ctrl+Q)")
         
         # Bind keyboard shortcut for exit
         self.root.bind('<Control-q>', lambda e: self.exit_application())
+    
+    def show_data_location(self):
+        """Show where the data file is stored"""
+        data_dir = Path(self.data_file).parent
+        messagebox.showinfo("Data Location", 
+                           f"Travel data is stored at:\n\n{self.data_file}\n\n"
+                           f"Data directory:\n{data_dir}")
     
     def exit_application(self):
         """Exit the application"""
@@ -391,14 +483,19 @@ class ModernTravelCalendar:
             try:
                 with open(self.data_file, 'r') as f:
                     return json.load(f)
-            except:
+            except Exception as e:
+                print(f"Error loading data: {e}")
                 return []
         return []
     
     def save_data(self):
         """Save travel data to JSON file"""
-        with open(self.data_file, 'w') as f:
-            json.dump(self.travel_records, f, indent=2)
+        try:
+            with open(self.data_file, 'w') as f:
+                json.dump(self.travel_records, f, indent=2)
+        except Exception as e:
+            print(f"Error saving data: {e}")
+            messagebox.showerror("Save Error", f"Could not save data: {e}")
     
     def get_available_years(self) -> List[int]:
         """Get list of years from travel records"""
