@@ -6,6 +6,8 @@ import os
 import platform
 import shutil
 import sys
+import subprocess
+import webbrowser
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
@@ -291,19 +293,64 @@ class ModernTravelCalendar:
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Show Data Location", command=self.show_data_location)
-        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.exit_application, accelerator="(Ctrl+Q)")
         
-        # Bind keyboard shortcut for exit
+        # View menu
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Report", command=self.show_report, accelerator="(Ctrl+R)")
+        view_menu.add_separator()
+        view_menu.add_command(label="Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="Documentation", command=self.open_documentation)
+        
+        # Bind keyboard shortcuts
         self.root.bind('<Control-q>', lambda e: self.exit_application())
+        self.root.bind('<Control-r>', lambda e: self.show_report())
+        self.root.bind('<Control-d>', lambda e: self.open_data_location())
     
-    def show_data_location(self):
-        """Show where the data file is stored"""
+    def open_data_location(self):
+        """Open the directory containing the travel data file"""
         data_dir = Path(self.data_file).parent
-        messagebox.showinfo("Data Location", 
-                           f"Travel data is stored at:\n\n{self.data_file}\n\n"
-                           f"Data directory:\n{data_dir}")
+        
+        try:
+            system = platform.system()
+            
+            if system == "Windows":
+                # Windows - use os.startfile to open directory
+                os.startfile(str(data_dir))
+            elif system == "Darwin":  # macOS
+                # macOS - use 'open' command
+                subprocess.run(['open', str(data_dir)], check=True)
+            elif system == "Linux":
+                # Linux - use 'xdg-open' command
+                subprocess.run(['xdg-open', str(data_dir)], check=True)
+            else:
+                # Unknown OS - fallback to showing the path
+                messagebox.showinfo("Data Location", 
+                                   f"Travel data directory:\n{data_dir}\n\n"
+                                   f"Cannot automatically open directory on {system}")
+                
+        except Exception as e:
+            # If opening fails, show the path in a message box as fallback
+            messagebox.showerror("Error", 
+                               f"Could not open data directory:\n{data_dir}\n\n"
+                               f"Error: {e}")
+    
+    def open_documentation(self):
+        """Open the documentation URL in the default web browser"""
+        documentation_url = "https://github.com/jackworthen/travel-tracker"
+        
+        try:
+            webbrowser.open(documentation_url)
+        except Exception as e:
+            # If opening fails, show the URL in a message box as fallback
+            messagebox.showinfo("Documentation", 
+                               f"Could not open web browser automatically.\n\n"
+                               f"Please visit the documentation at:\n{documentation_url}")
     
     def exit_application(self):
         """Exit the application"""
