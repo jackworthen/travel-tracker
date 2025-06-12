@@ -675,6 +675,20 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
+        # Current date button style
+        style.configure('CalendarCurrent.TButton',
+                       background=self.colors['danger'],
+                       foreground=self.colors['text'],
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(8, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('CalendarCurrent.TButton',
+                 background=[('active', '#dc2626'),
+                           ('pressed', '#b91c1c')],
+                 foreground=[('active', self.colors['text']),
+                           ('pressed', self.colors['text'])])
+        
         # Navigation button styles
         style.configure('Nav.TButton',
                        background=self.colors['surface'],
@@ -1075,6 +1089,7 @@ class ModernTravelCalendar:
         
         legend_items = [
             ("🏠 No Travel", self.colors['surface']),
+            ("📅 Today", self.colors['danger']),
             ("✈️ Travel Days", self.colors['accent']),
             ("📍 Selected", self.colors['warning'])
         ]
@@ -1168,10 +1183,13 @@ class ModernTravelCalendar:
                     # Check status
                     has_travel = self.date_has_travel(date_obj)
                     is_selected = self.date_is_selected(date_obj)
+                    is_current = self.date_is_current(date_obj)
                     
-                    # Determine style
+                    # Determine style (priority: selected > current > travel > normal)
                     if is_selected:
                         style = 'CalendarSelected.TButton'
+                    elif is_current:
+                        style = 'CalendarCurrent.TButton'
                     elif has_travel:
                         style = 'CalendarTravel.TButton'
                     else:
@@ -1206,6 +1224,11 @@ class ModernTravelCalendar:
             return self.selected_start_date <= date_obj <= self.selected_end_date
         else:
             return date_obj == self.selected_start_date
+    
+    def date_is_current(self, date_obj: datetime) -> bool:
+        """Check if a date is the current date (today)"""
+        current_date = datetime.now().date()
+        return date_obj.date() == current_date
     
     def date_clicked(self, day: int):
         """Handle date button clicks"""
