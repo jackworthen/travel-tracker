@@ -54,6 +54,7 @@ class ModernTravelCalendar:
         self.current_year = datetime.now().year
         
         self.setup_modern_styles()
+        self.setup_menu()
         self.setup_ui()
         self.update_calendar_display()
         self.update_location_dropdown()
@@ -198,6 +199,24 @@ class ModernTravelCalendar:
                        borderwidth=2,
                        relief='solid',
                        padding=(12, 8))
+    
+    def setup_menu(self):
+        """Setup the application menu bar"""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Exit", command=self.exit_application, accelerator="(Ctrl+Q)")
+        
+        # Bind keyboard shortcut for exit
+        self.root.bind('<Control-q>', lambda e: self.exit_application())
+    
+    def exit_application(self):
+        """Exit the application"""
+        self.root.quit()
+        self.root.destroy()
     
     def setup_ui(self):
         # Main container with padding
@@ -796,6 +815,11 @@ class ModernTravelCalendar:
                 self.selected_end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
                 self.selecting_range = False
                 
+                # Navigate calendar to the start date's month/year
+                start_date_obj = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                self.current_month = start_date_obj.month
+                self.current_year = start_date_obj.year
+                
                 # Set edit mode
                 self.edit_mode = True
                 self.edit_index = i
@@ -804,7 +828,7 @@ class ModernTravelCalendar:
                 self.update_calendar_display()
                 self._on_report_window_close()
                 
-                messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Click 'Save Travel' to update.")
+                messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Calendar navigated to travel dates. Click 'Save Travel' to update.")
                 break
     
     def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree):
