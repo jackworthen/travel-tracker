@@ -1086,7 +1086,7 @@ class ModernTravelCalendar:
         
         # Calculate statistics
         total_days = 0
-        total_trips = 0  # New: count total trips (only past and current)
+        trips_taken = 0  # New: count trips_taken (only past and current)
         future_trips = 0  # New: count future trips
         locations = set()
         current_date = datetime.now()
@@ -1105,7 +1105,7 @@ class ModernTravelCalendar:
             if start_date.year <= current_date.year and end_date.year >= current_date.year:
                 # Only count as a trip if it has already started (past or current travel)
                 if start_date <= current_date:
-                    total_trips += 1
+                    trips_taken += 1
                 
                 # Adjust dates to current year if needed
                 count_start = max(start_date, year_start)
@@ -1143,15 +1143,15 @@ class ModernTravelCalendar:
         stats_frame.columnconfigure(3, weight=1)
         stats_frame.columnconfigure(4, weight=1)  # New: 5th column
         
-        # NEW: Total trips card (first card) - MODIFIED: Shows current year instead of "This Year"
+        # Trips Taken card 
         trips_card = tk.Frame(stats_frame, bg='#EA3680', relief='solid', bd=0, padx=16, pady=12)
         trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 4))
         
         tk.Label(trips_card, text="🚀", font=('Segoe UI', 20), 
                 bg='#EA3680', fg='white').pack()
-        tk.Label(trips_card, text=str(total_trips), font=('Segoe UI', 24, 'bold'),
+        tk.Label(trips_card, text=str(trips_taken), font=('Segoe UI', 24, 'bold'),
                 bg='#EA3680', fg='white').pack()
-        tk.Label(trips_card, text=f"Total Trips ({current_date.year})", font=('Segoe UI', 10),
+        tk.Label(trips_card, text=f"Trips Taken ({current_date.year})", font=('Segoe UI', 10),
                 bg='#EA3680', fg='white').pack()
         
         # Future trips card (second position)
