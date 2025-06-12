@@ -726,14 +726,10 @@ class ModernTravelCalendar:
         # View menu
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
-        view_menu.add_command(label="Report", command=self.show_report, accelerator="(Ctrl+R)")
+        view_menu.add_command(label="Travel Report", command=self.show_report, accelerator="(Ctrl+R)")
         view_menu.add_separator()
+        view_menu.add_command(label="Validation Settings", command=self.show_validation_settings, accelerator="(Ctrl+S)")
         view_menu.add_command(label="Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
-        
-        # Tools menu (new - for validation settings)
-        tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
-        tools_menu.add_command(label="Validation Settings", command=self.show_validation_settings)
         
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -743,13 +739,14 @@ class ModernTravelCalendar:
         # Bind keyboard shortcuts
         self.root.bind('<Control-q>', lambda e: self.exit_application())
         self.root.bind('<Control-r>', lambda e: self.show_report())
+        self.root.bind('<Control-s>', lambda e: self.show_validation_settings())
         self.root.bind('<Control-d>', lambda e: self.open_data_location())
     
     def show_validation_settings(self):
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Validation Settings")
-        dialog.geometry("500x600")
+        dialog.geometry("500x690")
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -761,92 +758,95 @@ class ModernTravelCalendar:
         main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Title
-        tk.Label(main_frame, text="⚙️ Validation Settings", 
-                font=('Segoe UI', 16, 'bold'),
-                fg=self.colors['text'],
-                bg=self.colors['background']).pack(pady=(0, 20))
-        
         # Settings variables
         settings_vars = {}
         
-        # Allow overlaps setting
-        overlap_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        overlap_frame.pack(fill=tk.X, pady=(0, 15))
+        # Date Validation Settings Frame
+        date_frame = ttk.LabelFrame(main_frame, text="📅 Date Validation", style='Card.TLabelframe')
+        date_frame.pack(fill=tk.X, pady=(0, 20))
         
+        date_inner = tk.Frame(date_frame, bg=self.colors['surface'])
+        date_inner.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Allow overlaps setting
         settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
-        tk.Checkbutton(overlap_frame, text="Allow overlapping travel dates",
+        tk.Checkbutton(date_inner, text="Allow overlapping travel dates",
                       variable=settings_vars['allow_overlaps'],
-                      bg=self.colors['background'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Future date warnings
-        future_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        future_frame.pack(fill=tk.X, pady=(0, 15))
-        
         settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
-        tk.Checkbutton(future_frame, text="Warn about far future dates",
+        tk.Checkbutton(date_inner, text="Warn about far future dates",
                       variable=settings_vars['warn_future_dates'],
-                      bg=self.colors['background'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
         
-        tk.Label(future_frame, text="Days in future to warn:",
+        future_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
+        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 15))
+        
+        tk.Label(future_days_frame, text="Days in future to warn:",
                 font=('Segoe UI', 10),
                 fg=self.colors['text_light'],
-                bg=self.colors['background']).pack(anchor=tk.W, padx=(20, 0))
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
-        future_entry = tk.Entry(future_frame, textvariable=settings_vars['future_warning_days'],
+        future_entry = tk.Entry(future_days_frame, textvariable=settings_vars['future_warning_days'],
                                width=10, font=('Segoe UI', 10))
-        future_entry.pack(anchor=tk.W, padx=(20, 0), pady=(5, 0))
+        future_entry.pack(anchor=tk.W, pady=(5, 0))
         
         # Past date warnings
-        past_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        past_frame.pack(fill=tk.X, pady=(0, 15))
-        
         settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
-        tk.Checkbutton(past_frame, text="Warn about old past dates",
+        tk.Checkbutton(date_inner, text="Warn about old past dates",
                       variable=settings_vars['warn_past_dates'],
-                      bg=self.colors['background'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
         
-        tk.Label(past_frame, text="Days in past to warn:",
+        past_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
+        past_days_frame.pack(fill=tk.X, padx=(20, 0))
+        
+        tk.Label(past_days_frame, text="Days in past to warn:",
                 font=('Segoe UI', 10),
                 fg=self.colors['text_light'],
-                bg=self.colors['background']).pack(anchor=tk.W, padx=(20, 0))
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
-        past_entry = tk.Entry(past_frame, textvariable=settings_vars['past_warning_days'],
+        past_entry = tk.Entry(past_days_frame, textvariable=settings_vars['past_warning_days'],
                              width=10, font=('Segoe UI', 10))
-        past_entry.pack(anchor=tk.W, padx=(20, 0), pady=(5, 0))
+        past_entry.pack(anchor=tk.W, pady=(5, 0))
         
-        # Length limits
-        length_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        length_frame.pack(fill=tk.X, pady=(0, 15))
+        # Text Length Limits Frame
+        length_frame = ttk.LabelFrame(main_frame, text="📝 Text Length Limits", style='Card.TLabelframe')
+        length_frame.pack(fill=tk.X, pady=(0, 20))
         
-        tk.Label(length_frame, text="Maximum location length:",
+        length_inner = tk.Frame(length_frame, bg=self.colors['surface'])
+        length_inner.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Location length
+        tk.Label(length_inner, text="Maximum location length:",
                 font=('Segoe UI', 11),
                 fg=self.colors['text'],
-                bg=self.colors['background']).pack(anchor=tk.W)
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
         
         settings_vars['max_location_length'] = tk.StringVar(value=str(self.validation_settings['max_location_length']))
-        loc_entry = tk.Entry(length_frame, textvariable=settings_vars['max_location_length'],
+        loc_entry = tk.Entry(length_inner, textvariable=settings_vars['max_location_length'],
                             width=10, font=('Segoe UI', 10))
-        loc_entry.pack(anchor=tk.W, pady=(5, 0))
+        loc_entry.pack(anchor=tk.W, pady=(0, 15))
         
-        tk.Label(length_frame, text="Maximum comment length:",
+        # Comment length
+        tk.Label(length_inner, text="Maximum comment length:",
                 font=('Segoe UI', 11),
                 fg=self.colors['text'],
-                bg=self.colors['background']).pack(anchor=tk.W, pady=(15, 0))
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
         
         settings_vars['max_comment_length'] = tk.StringVar(value=str(self.validation_settings['max_comment_length']))
-        comment_entry = tk.Entry(length_frame, textvariable=settings_vars['max_comment_length'],
+        comment_entry = tk.Entry(length_inner, textvariable=settings_vars['max_comment_length'],
                                 width=10, font=('Segoe UI', 10))
-        comment_entry.pack(anchor=tk.W, pady=(5, 0))
+        comment_entry.pack(anchor=tk.W)
         
         # Buttons
         buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        buttons_frame.pack(fill=tk.X, pady=(30, 0))
+        buttons_frame.pack(fill=tk.X, pady=(20, 0))
         
         def save_settings():
             try:
@@ -1026,7 +1026,7 @@ class ModernTravelCalendar:
                              command=self.clear_form)
         clear_btn.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
         
-        report_btn = tk.Button(button_frame, text="📊 View Report",
+        report_btn = tk.Button(button_frame, text="📊 View Travel Report",
                               bg=self.colors['primary'], fg='white',
                               font=('Segoe UI', 10, 'bold'),
                               relief='flat', bd=0, padx=12, pady=8,
