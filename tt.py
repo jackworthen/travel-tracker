@@ -1780,8 +1780,8 @@ class ModernTravelCalendar:
             # Sort the filtered records
             filtered_records = sorted(filtered_records, key=sort_key, reverse=self.sort_reverse)
         else:
-            # Default sort by start date (most recent first) when no column sorting is active
-            filtered_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=True)
+            # Default sort by start date (oldest first) when no column sorting is active
+            filtered_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=False)
         
         # Add filtered records to tree
         for record in filtered_records:
@@ -1809,8 +1809,8 @@ class ModernTravelCalendar:
         # Configure color tags
         self.configure_treeview_tags(records_tree)
         
-        # Add records sorted by start date
-        sorted_records = sorted(self.travel_records, key=lambda x: x['start_date'], reverse=True)
+        # Add records sorted by start date (oldest first)
+        sorted_records = sorted(self.travel_records, key=lambda x: x['start_date'], reverse=False)
         for record in sorted_records:
             # Truncate comment if it's too long for display
             comment = record.get('comment', '')
@@ -2209,9 +2209,9 @@ class ModernTravelCalendar:
         filter_inner = tk.Frame(filter_frame, bg=self.colors['surface'])
         filter_inner.pack(fill=tk.X, pady=10)
         
-        # Create filter variables (all enabled by default)
+        # Create filter variables (Past disabled by default, Current and Future enabled)
         filter_vars = {
-            'past': tk.BooleanVar(value=True),
+            'past': tk.BooleanVar(value=False),
             'current': tk.BooleanVar(value=True),
             'future': tk.BooleanVar(value=True)
         }
