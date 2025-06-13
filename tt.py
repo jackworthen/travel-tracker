@@ -1679,11 +1679,26 @@ class ModernTravelCalendar:
             
             filtered_records.append(record)
         
-        # Sort by start date (most recent first)
-        sorted_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=True)
+        # Apply sorting if there is an active sort column
+        if self.sort_column:
+            # Define sort keys for different columns
+            def sort_key(record):
+                if self.sort_column == 'Start':
+                    return record['start_date']
+                elif self.sort_column == 'End':
+                    return record['end_date']
+                elif self.sort_column == 'Location':
+                    return record['location'].lower()
+                return ''
+            
+            # Sort the filtered records
+            filtered_records = sorted(filtered_records, key=sort_key, reverse=self.sort_reverse)
+        else:
+            # Default sort by start date (most recent first) when no column sorting is active
+            filtered_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=True)
         
         # Add filtered records to tree
-        for record in sorted_records:
+        for record in filtered_records:
             # Truncate comment if it's too long for display
             comment = record.get('comment', '')
             if len(comment) > 50:
@@ -1858,7 +1873,7 @@ class ModernTravelCalendar:
             self.report_window.focus_force()
     
     def sort_records(self, records_tree, column):
-        """Sort records by the specified column"""
+        """Sort records by the specified column while respecting current filters"""
         # Toggle sort direction if clicking the same column
         if self.sort_column == column:
             self.sort_reverse = not self.sort_reverse
@@ -1866,24 +1881,18 @@ class ModernTravelCalendar:
             self.sort_column = column
             self.sort_reverse = False
         
-        # Define sort keys for different columns
-        def sort_key(record):
-            if column == 'Start':
-                return record['start_date']
-            elif column == 'End':
-                return record['end_date']
-            elif column == 'Location':
-                return record['location'].lower()
-            return ''
-        
-        # Sort the records
-        sorted_records = sorted(self.travel_records, key=sort_key, reverse=self.sort_reverse)
-        
-        # Update the display with sorted records
-        self.update_records_display_sorted(records_tree, sorted_records)
-        
         # Update column heading to show sort direction
         self.update_column_headers(records_tree, column)
+        
+        # Use the stored filter variables from the report window if available
+        if (hasattr(self, '_current_filter_vars') and hasattr(self, '_current_year_var') and 
+            hasattr(self, '_current_search_var')):
+            # Use the filtered display method which now includes sorting logic
+            self.update_records_display_filtered(records_tree, self._current_filter_vars, 
+                                                self._current_year_var, self._current_search_var)
+        else:
+            # Fallback - this shouldn't happen in normal operation
+            self.update_records_display(records_tree)
     
     def update_records_display_sorted(self, records_tree, sorted_records):
         """Update the travel records display with sorted records"""
@@ -2261,16 +2270,14 @@ class ModernTravelCalendar:
         records_tree = ttk.Treeview(tree_frame, columns=('Start', 'End', 'Location', 'Comment'), 
                                    show='headings', height=15)
         
-        # Configure headers
-        records_tree.heading('Start', text='Start Date', anchor='w')
-        records_tree.heading('End', text='End Date', anchor='w')
-        records_tree.heading('Location', text='Location', anchor='w')
+        # Configure headers with sorting functionality
+        records_tree.heading('Start', text='Start Date', anchor='w',
+                           command=lambda: self.sort_records(records_tree, 'Start'))
+        records_tree.heading('End', text='End Date', anchor='w',
+                           command=lambda: self.sort_records(records_tree, 'End'))
+        records_tree.heading('Location', text='Location', anchor='w',
+                           command=lambda: self.sort_records(records_tree, 'Location'))
         records_tree.heading('Comment', text='Notes', anchor='w')
-        
-        # Add click handlers for sortable columns
-        records_tree.heading('Start', command=lambda: self.sort_records(records_tree, 'Start'))
-        records_tree.heading('End', command=lambda: self.sort_records(records_tree, 'End'))
-        records_tree.heading('Location', command=lambda: self.sort_records(records_tree, 'Location'))
         
         # Set column widths
         records_tree.column('Start', width=120)
