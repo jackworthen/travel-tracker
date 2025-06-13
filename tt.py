@@ -1168,6 +1168,16 @@ class ModernTravelCalendar:
         self.calendar_frame_inner = tk.Frame(calendar_container, bg=self.colors['surface'])
         self.calendar_frame_inner.pack(expand=True)
         
+        # Travel days counter (between calendar and legend)
+        travel_days_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        travel_days_frame.pack(fill=tk.X, pady=(15, 10))
+        
+        self.travel_days_label = tk.Label(travel_days_frame, 
+                                         font=('Segoe UI', 11, 'bold'),
+                                         fg=self.colors['primary'],
+                                         bg=self.colors['surface'])
+        self.travel_days_label.pack()
+        
         # Legend
         legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
         legend_frame.pack(fill=tk.X, pady=(20, 0))
@@ -1295,6 +1305,50 @@ class ModernTravelCalendar:
             self.calendar_frame_inner.columnconfigure(i, weight=1)
         for i in range(len(cal) + 1):
             self.calendar_frame_inner.rowconfigure(i, weight=1)
+        
+        # Update travel days counter
+        travel_days = self.get_travel_days_for_month(self.current_year, self.current_month)
+        month_name = calendar.month_name[self.current_month]
+        
+        if travel_days == 0:
+            days_text = f"No travel days in {month_name} {self.current_year}"
+        elif travel_days == 1:
+            days_text = f"1 travel day in {month_name} {self.current_year}"
+        else:
+            days_text = f"{travel_days} travel days in {month_name} {self.current_year}"
+        
+        self.travel_days_label.config(text=f"✈️ {days_text}")
+    
+    def get_travel_days_for_month(self, year: int, month: int) -> int:
+        """Calculate total travel days for a specific month and year"""
+        travel_days = 0
+        
+        # Get the first and last day of the month
+        month_start = datetime(year, month, 1)
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = datetime(year, month + 1, 1) - timedelta(days=1)
+        
+        for record in self.travel_records:
+            try:
+                trip_start = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                trip_end = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Calculate overlap between trip and month
+                overlap_start = max(trip_start, month_start)
+                overlap_end = min(trip_end, month_end)
+                
+                # If there's an overlap, count the days
+                if overlap_start <= overlap_end:
+                    days_in_month = (overlap_end - overlap_start).days + 1
+                    travel_days += days_in_month
+                    
+            except ValueError:
+                # Skip records with invalid dates
+                continue
+        
+        return travel_days
     
     def date_has_travel(self, date_obj: datetime) -> bool:
         """Check if a date has travel records"""
