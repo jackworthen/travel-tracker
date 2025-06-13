@@ -1927,7 +1927,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("785x825")
+        report_window.geometry("785x800")
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
@@ -1954,7 +1954,7 @@ class ModernTravelCalendar:
         trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 4))
         
         tk.Label(trips_card, text="🚀", font=('Segoe UI', 20), 
-                bg='#EA3680', fg='white').pack()
+                bg='#EA3680', fg='white', anchor='center', justify='center').pack()
         tk.Label(trips_card, text=str(trips_taken), font=('Segoe UI', 24, 'bold'),
                 bg='#EA3680', fg='white').pack()
         tk.Label(trips_card, text=f"Trips Taken ({current_date.year})", font=('Segoe UI', 10),
@@ -1964,8 +1964,8 @@ class ModernTravelCalendar:
         future_card = tk.Frame(stats_frame, bg='#E5B32D', relief='solid', bd=0, padx=16, pady=12)
         future_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=4)
         
-        tk.Label(future_card, text="🗓️", font=('Segoe UI', 20),
-                bg='#E5B32D', fg='white').pack()
+        tk.Label(future_card, text=" 📅 ", font=('Segoe UI', 20),
+                bg='#E5B32D', fg='white', anchor='center').pack()
         tk.Label(future_card, text=str(future_trips), font=('Segoe UI', 24, 'bold'),
                 bg='#E5B32D', fg='white').pack()
         tk.Label(future_card, text="Upcoming Trips", font=('Segoe UI', 10),
@@ -1976,7 +1976,7 @@ class ModernTravelCalendar:
         days_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(days_card, text="✈️", font=('Segoe UI', 20), 
-                bg=self.colors['primary'], fg='white').pack()
+                bg=self.colors['primary'], fg='white', anchor='center', justify='center').pack()
         tk.Label(days_card, text=str(total_days), font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['primary'], fg='white').pack()
         tk.Label(days_card, text=f"Days Traveled ({current_date.year})", font=('Segoe UI', 10),
@@ -1987,7 +1987,7 @@ class ModernTravelCalendar:
         percent_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=4)
         
         tk.Label(percent_card, text="📈", font=('Segoe UI', 20),
-                bg=self.colors['success'], fg='white').pack()
+                bg=self.colors['success'], fg='white', anchor='center', justify='center').pack()
         tk.Label(percent_card, text=f"{percentage:.1f}%", font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['success'], fg='white').pack()
         tk.Label(percent_card, text="Percentage of Year", font=('Segoe UI', 10),
@@ -1998,7 +1998,7 @@ class ModernTravelCalendar:
         locations_card.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=(4, 0))
         
         tk.Label(locations_card, text="🌍", font=('Segoe UI', 20),
-                bg=self.colors['accent'], fg='white').pack()
+                bg=self.colors['accent'], fg='white', anchor='center', justify='center').pack()
         tk.Label(locations_card, text=str(len(locations)), font=('Segoe UI', 24, 'bold'),
                 bg=self.colors['accent'], fg='white').pack()
         tk.Label(locations_card, text="Locations Visited ", font=('Segoe UI', 10),
@@ -2085,7 +2085,7 @@ class ModernTravelCalendar:
         year_status_frame.pack(fill=tk.X)
         
         # Status toggle buttons (first on the row)
-        tk.Label(year_status_frame, text="📊 Status:", 
+        tk.Label(year_status_frame, text="📊 Status Toggle:", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
