@@ -786,6 +786,8 @@ class ModernTravelCalendar:
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
+        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.exit_application, accelerator="(Ctrl+Q)")
         
         # View menu
@@ -793,7 +795,7 @@ class ModernTravelCalendar:
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Travel Report", command=self.show_report, accelerator="(Ctrl+R)")
         view_menu.add_separator()
-        view_menu.add_command(label="Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
+
         view_menu.add_command(label="Settings", command=self.show_validation_settings, accelerator="(Ctrl+S)")
         
         # Help menu
