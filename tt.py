@@ -487,7 +487,7 @@ class ModernTravelCalendar:
         message_frame = tk.Frame(header_frame, bg=self.colors['background'])
         message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        tk.Label(message_frame, text="Validation Errors", 
+        tk.Label(message_frame, text="Error", 
                 font=('Segoe UI', 16, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['background']).pack(anchor=tk.W)
@@ -566,7 +566,7 @@ class ModernTravelCalendar:
         message_frame = tk.Frame(header_frame, bg=self.colors['background'])
         message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        tk.Label(message_frame, text="Validation Warnings", 
+        tk.Label(message_frame, text="Warnings", 
                 font=('Segoe UI', 16, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['background']).pack(anchor=tk.W)
