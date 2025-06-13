@@ -68,7 +68,11 @@ class ModernTravelCalendar:
             'warn_past_dates': True,
             'past_warning_days': 1095,   # 3 years
             'max_location_length': 100,
-            'max_comment_length': 1000
+            'max_comment_length': 1000,
+            # Status toggle defaults
+            'default_show_past': False,
+            'default_show_current': True,
+            'default_show_future': True
         }
         self.load_config()  # Load saved settings from config file
         
@@ -845,7 +849,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("500x690")
+        dialog.geometry("500x550")  # Reduced height thanks to tabs
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -857,24 +861,28 @@ class ModernTravelCalendar:
         main_frame = tk.Frame(dialog, bg=self.colors['background'], padx=30, pady=30)
         main_frame.pack(fill=tk.BOTH, expand=True)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(3, weight=1)
+        main_frame.rowconfigure(0, weight=1)
         
         # Settings variables
         settings_vars = {}
         
-        # Date Validation Settings Frame
-        date_frame = ttk.LabelFrame(main_frame, text="📅 Date Validation", style='Card.TLabelframe')
-        date_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        # Create notebook for tabs
+        notebook = ttk.Notebook(main_frame)
+        notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 20))
         
-        date_inner = tk.Frame(date_frame, bg=self.colors['surface'])
-        date_inner.pack(fill=tk.X, padx=10, pady=10)
+        # ========== VALIDATION TAB ==========
+        validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(validation_tab, text="Validation")
+        
+        validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
+        validation_content.pack(fill=tk.BOTH, expand=True)
         
         # Allow overlaps setting
         settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
-        tk.Checkbutton(date_inner, text="Allow Overlapping Dates",
+        tk.Checkbutton(validation_content, text="Allow Overlapping Dates",
                       variable=settings_vars['allow_overlaps'],
                       bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
         
         # Future date warnings
         settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
@@ -886,15 +894,15 @@ class ModernTravelCalendar:
             else:
                 future_entry.config(state='disabled')
         
-        tk.Checkbutton(date_inner, text="Limit Future Dates",
+        tk.Checkbutton(validation_content, text="Limit Future Dates",
                       variable=settings_vars['warn_future_dates'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11),
-                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 5))
+                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 10))
         
         # Future days setting - horizontal layout
-        future_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
-        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 15))
+        future_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 20))
         
         tk.Label(future_days_frame, text="Future Limit:",
                 font=('Segoe UI', 10),
@@ -920,14 +928,14 @@ class ModernTravelCalendar:
             else:
                 past_entry.config(state='disabled')
         
-        tk.Checkbutton(date_inner, text="Limit Past Dates",
+        tk.Checkbutton(validation_content, text="Limit Past Dates",
                       variable=settings_vars['warn_past_dates'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11),
-                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 5))
+                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 10))
         
         # Past days setting - horizontal layout
-        past_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
+        past_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
         past_days_frame.pack(fill=tk.X, padx=(20, 0))
         
         tk.Label(past_days_frame, text="Past Limit:",
@@ -944,16 +952,49 @@ class ModernTravelCalendar:
         if not settings_vars['warn_past_dates'].get():
             past_entry.config(state='disabled')
         
-        # Text Length Limits Frame
-        length_frame = ttk.LabelFrame(main_frame, text="📝 Text Length Limits", style='Card.TLabelframe')
-        length_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        # ========== TOGGLE TAB ==========
+        toggle_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(toggle_tab, text="Toggle")
         
-        length_inner = tk.Frame(length_frame, bg=self.colors['surface'])
-        length_inner.pack(fill=tk.X, padx=10, pady=10)
+        toggle_content = tk.Frame(toggle_tab, bg=self.colors['surface'], padx=20, pady=20)
+        toggle_content.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(toggle_content, text="Set default status toggles for the Travel Report:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 20))
+        
+        # Past toggle default
+        settings_vars['default_show_past'] = tk.BooleanVar(value=self.validation_settings['default_show_past'])
+        tk.Checkbutton(toggle_content, text="Past Trips",
+                      variable=settings_vars['default_show_past'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
+        
+        # Current toggle default
+        settings_vars['default_show_current'] = tk.BooleanVar(value=self.validation_settings['default_show_current'])
+        tk.Checkbutton(toggle_content, text="Current Trips",
+                      variable=settings_vars['default_show_current'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
+        
+        # Future toggle default
+        settings_vars['default_show_future'] = tk.BooleanVar(value=self.validation_settings['default_show_future'])
+        tk.Checkbutton(toggle_content, text="Future Trips",
+                      variable=settings_vars['default_show_future'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+        
+        # ========== INPUT TAB ==========
+        input_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(input_tab, text="Input")
+        
+        input_content = tk.Frame(input_tab, bg=self.colors['surface'], padx=20, pady=20)
+        input_content.pack(fill=tk.BOTH, expand=True)
         
         # Location length - horizontal layout
-        location_frame = tk.Frame(length_inner, bg=self.colors['surface'])
-        location_frame.pack(fill=tk.X, pady=(0, 15))
+        location_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        location_frame.pack(fill=tk.X, pady=(0, 20))
         
         tk.Label(location_frame, text="Max. Location Length:",
                 font=('Segoe UI', 11),
@@ -966,7 +1007,7 @@ class ModernTravelCalendar:
         loc_entry.pack(side=tk.LEFT, padx=(10, 0))
         
         # Comment length - horizontal layout
-        comment_frame = tk.Frame(length_inner, bg=self.colors['surface'])
+        comment_frame = tk.Frame(input_content, bg=self.colors['surface'])
         comment_frame.pack(fill=tk.X)
         
         tk.Label(comment_frame, text="Max. Notes Length:",
@@ -981,7 +1022,7 @@ class ModernTravelCalendar:
         
         # Buttons
         buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
-        buttons_frame.grid(row=4, column=0, pady=(20, 0))
+        buttons_frame.grid(row=1, column=0, pady=(20, 0))
         
         def save_settings():
             try:
@@ -993,6 +1034,11 @@ class ModernTravelCalendar:
                 self.validation_settings['past_warning_days'] = int(settings_vars['past_warning_days'].get())
                 self.validation_settings['max_location_length'] = int(settings_vars['max_location_length'].get())
                 self.validation_settings['max_comment_length'] = int(settings_vars['max_comment_length'].get())
+                
+                # Update status toggle defaults
+                self.validation_settings['default_show_past'] = settings_vars['default_show_past'].get()
+                self.validation_settings['default_show_current'] = settings_vars['default_show_current'].get()
+                self.validation_settings['default_show_future'] = settings_vars['default_show_future'].get()
                 
                 # Save settings to config file
                 self.save_config()
@@ -2209,11 +2255,11 @@ class ModernTravelCalendar:
         filter_inner = tk.Frame(filter_frame, bg=self.colors['surface'])
         filter_inner.pack(fill=tk.X, pady=10)
         
-        # Create filter variables (Past disabled by default, Current and Future enabled)
+        # Create filter variables using user's saved preferences
         filter_vars = {
-            'past': tk.BooleanVar(value=False),
-            'current': tk.BooleanVar(value=True),
-            'future': tk.BooleanVar(value=True)
+            'past': tk.BooleanVar(value=self.validation_settings['default_show_past']),
+            'current': tk.BooleanVar(value=self.validation_settings['default_show_current']),
+            'future': tk.BooleanVar(value=self.validation_settings['default_show_future'])
         }
         
         # Get available years
