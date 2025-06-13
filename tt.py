@@ -849,7 +849,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("500x550")  # Reduced height thanks to tabs
+        dialog.geometry("400x450")  # Reduced height thanks to tabs
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -959,7 +959,7 @@ class ModernTravelCalendar:
         toggle_content = tk.Frame(toggle_tab, bg=self.colors['surface'], padx=20, pady=20)
         toggle_content.pack(fill=tk.BOTH, expand=True)
         
-        tk.Label(toggle_content, text="Set default status toggles for the Travel Report:",
+        tk.Label(toggle_content, text="Default Satus Toggles",
                 font=('Segoe UI', 11),
                 fg=self.colors['text_light'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 20))
