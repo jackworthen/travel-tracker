@@ -1170,7 +1170,7 @@ class ModernTravelCalendar:
         self.calendar_frame_inner = tk.Frame(calendar_container, bg=self.colors['surface'])
         self.calendar_frame_inner.pack(expand=True)
         
-        # Travel days counter (between calendar and legend)
+        # Travel days counter (between calendar and upcoming trip)
         travel_days_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
         travel_days_frame.pack(fill=tk.X, pady=(15, 10))
         
@@ -1179,6 +1179,18 @@ class ModernTravelCalendar:
                                          fg=self.colors['primary'],
                                          bg=self.colors['surface'])
         self.travel_days_label.pack()
+        
+        # Upcoming trip info (between travel days and legend)
+        upcoming_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        upcoming_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.upcoming_trip_label = tk.Label(upcoming_frame, 
+                                           font=('Segoe UI', 11, 'bold'),
+                                           fg=self.colors['success'],
+                                           bg=self.colors['surface'],
+                                           wraplength=450,  # Wrap text to fit calendar width
+                                           justify=tk.LEFT)
+        self.upcoming_trip_label.pack()
         
         # Legend
         legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
@@ -1204,6 +1216,26 @@ class ModernTravelCalendar:
                                   padx=8, pady=4,
                                   relief='solid', bd=1)
             legend_item.pack(side=tk.LEFT, padx=(10, 0))
+    
+    def get_next_upcoming_trip(self):
+        """Get the next upcoming trip (future trip with earliest start date)"""
+        current_date = datetime.now()
+        upcoming_trips = []
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                if start_date > current_date:
+                    upcoming_trips.append((start_date, record))
+            except ValueError:
+                continue
+        
+        if not upcoming_trips:
+            return None
+        
+        # Sort by start date and return the earliest
+        upcoming_trips.sort(key=lambda x: x[0])
+        return upcoming_trips[0][1]  # Return the record
     
     def load_data(self) -> List[Dict]:
         """Load travel data from JSON file"""
@@ -1320,6 +1352,25 @@ class ModernTravelCalendar:
             days_text = f"{travel_days} travel days in {month_name} {self.current_year}"
         
         self.travel_days_label.config(text=f"✈️ {days_text}")
+        
+        # Update upcoming trip info
+        upcoming_trip = self.get_next_upcoming_trip()
+        if upcoming_trip:
+            location = upcoming_trip['location']
+            notes = upcoming_trip.get('comment', '').strip()
+            
+            # Create upcoming trip text
+            if notes:
+                # If notes are too long, truncate them
+                if len(notes) > 100:
+                    notes = notes[:97] + "..."
+                upcoming_text = f"🎯 Upcoming: {location} - {notes}"
+            else:
+                upcoming_text = f"🎯 Upcoming: {location}"
+            
+            self.upcoming_trip_label.config(text=upcoming_text)
+        else:
+            self.upcoming_trip_label.config(text="🎯 No upcoming trips scheduled")
     
     def get_travel_days_for_month(self, year: int, month: int) -> int:
         """Calculate total travel days for a specific month and year"""
