@@ -1643,6 +1643,9 @@ class ModernTravelCalendar:
         self.update_calendar_display()
         self.update_location_dropdown()
         
+        # Update statistics cards if report window is open
+        self.update_statistics_cards()
+        
         # Update year dropdown in report window if it's open
         if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
             hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
@@ -1949,6 +1952,9 @@ class ModernTravelCalendar:
             self.update_calendar_display()
             self.update_location_dropdown()
             
+            # Update statistics cards if report window is open
+            self.update_statistics_cards()
+            
             # Update year dropdown and records display
             if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
                 hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
@@ -2029,27 +2035,11 @@ class ModernTravelCalendar:
             elif sorted_column == 'Location':
                 records_tree.heading('Location', text=f'Location{arrow}', anchor='w')
     
-    def show_report(self):
-        """Show modern travel report in a new window"""
-        if not self.travel_records:
-            messagebox.showinfo("Report", "📈 No travel records found.")
-            return
-        
-        # Check if report window already exists
-        if self.report_window and self.report_window.winfo_exists():
-            # Bring existing window to front
-            self.report_window.lift()
-            self.report_window.focus_force()
-            return
-        
-        # Reset sorting state
-        self.sort_column = None
-        self.sort_reverse = False
-        
-        # Calculate statistics
+    def calculate_travel_statistics(self):
+        """Calculate travel statistics for the current year"""
         total_days = 0
-        trips_taken = 0  # New: count trips_taken (only past and current)
-        future_trips = 0  # New: count future trips
+        trips_taken = 0  # count trips_taken (only past and current)
+        future_trips = 0  # count future trips
         locations = set()
         current_date = datetime.now()
         year_start = datetime(current_date.year, 1, 1)
@@ -2080,6 +2070,50 @@ class ModernTravelCalendar:
         
         percentage = (total_days / days_in_year_so_far) * 100 if days_in_year_so_far > 0 else 0
         
+        return {
+            'total_days': total_days,
+            'trips_taken': trips_taken,
+            'future_trips': future_trips,
+            'locations_count': len(locations),
+            'percentage': percentage,
+            'current_year': current_date.year
+        }
+    
+    def update_statistics_cards(self):
+        """Update the statistics cards in the report window"""
+        if not (self.report_window and self.report_window.winfo_exists() and 
+                hasattr(self, '_stats_labels')):
+            return
+        
+        # Recalculate statistics
+        stats = self.calculate_travel_statistics()
+        
+        # Update the labels
+        self._stats_labels['trips_taken'].config(text=str(stats['trips_taken']))
+        self._stats_labels['future_trips'].config(text=str(stats['future_trips']))
+        self._stats_labels['total_days'].config(text=str(stats['total_days']))
+        self._stats_labels['percentage'].config(text=f"{stats['percentage']:.1f}%")
+        self._stats_labels['locations'].config(text=str(stats['locations_count']))
+    def show_report(self):
+        """Show modern travel report in a new window"""
+        if not self.travel_records:
+            messagebox.showinfo("Report", "📈 No travel records found.")
+            return
+        
+        # Check if report window already exists
+        if self.report_window and self.report_window.winfo_exists():
+            # Bring existing window to front
+            self.report_window.lift()
+            self.report_window.focus_force()
+            return
+        
+        # Reset sorting state
+        self.sort_column = None
+        self.sort_reverse = False
+        
+        # Calculate statistics
+        stats = self.calculate_travel_statistics()
+        
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
@@ -2105,15 +2139,19 @@ class ModernTravelCalendar:
         stats_frame.columnconfigure(3, weight=1)
         stats_frame.columnconfigure(4, weight=1)  # New: 5th column
         
+        # Initialize dictionary to store label references
+        self._stats_labels = {}
+        
         # Trips Taken card 
         trips_card = tk.Frame(stats_frame, bg='#EA3680', relief='solid', bd=0, padx=16, pady=12)
         trips_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 4))
         
         tk.Label(trips_card, text="🚀", font=('Segoe UI', 20), 
                 bg='#EA3680', fg='white', anchor='center', justify='center').pack()
-        tk.Label(trips_card, text=str(trips_taken), font=('Segoe UI', 24, 'bold'),
-                bg='#EA3680', fg='white').pack()
-        tk.Label(trips_card, text=f"Trips Taken ({current_date.year})", font=('Segoe UI', 10),
+        self._stats_labels['trips_taken'] = tk.Label(trips_card, text=str(stats['trips_taken']), font=('Segoe UI', 24, 'bold'),
+                bg='#EA3680', fg='white')
+        self._stats_labels['trips_taken'].pack()
+        tk.Label(trips_card, text=f"Trips Taken ({stats['current_year']})", font=('Segoe UI', 10),
                 bg='#EA3680', fg='white').pack()
         
         # Future trips card (second position)
@@ -2122,8 +2160,9 @@ class ModernTravelCalendar:
         
         tk.Label(future_card, text=" 📅 ", font=('Segoe UI', 20),
                 bg='#E5B32D', fg='white', anchor='center').pack()
-        tk.Label(future_card, text=str(future_trips), font=('Segoe UI', 24, 'bold'),
-                bg='#E5B32D', fg='white').pack()
+        self._stats_labels['future_trips'] = tk.Label(future_card, text=str(stats['future_trips']), font=('Segoe UI', 24, 'bold'),
+                bg='#E5B32D', fg='white')
+        self._stats_labels['future_trips'].pack()
         tk.Label(future_card, text="Upcoming Trips", font=('Segoe UI', 10),
                 bg='#E5B32D', fg='white').pack()
         
@@ -2133,9 +2172,10 @@ class ModernTravelCalendar:
         
         tk.Label(days_card, text="✈️", font=('Segoe UI', 20), 
                 bg=self.colors['primary'], fg='white', anchor='center', justify='center').pack()
-        tk.Label(days_card, text=str(total_days), font=('Segoe UI', 24, 'bold'),
-                bg=self.colors['primary'], fg='white').pack()
-        tk.Label(days_card, text=f"Days Traveled ({current_date.year})", font=('Segoe UI', 10),
+        self._stats_labels['total_days'] = tk.Label(days_card, text=str(stats['total_days']), font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['primary'], fg='white')
+        self._stats_labels['total_days'].pack()
+        tk.Label(days_card, text=f"Days Traveled ({stats['current_year']})", font=('Segoe UI', 10),
                 bg=self.colors['primary'], fg='white').pack()
         
         # Percentage card (moved to fourth position)
@@ -2144,8 +2184,9 @@ class ModernTravelCalendar:
         
         tk.Label(percent_card, text="📈", font=('Segoe UI', 20),
                 bg=self.colors['success'], fg='white', anchor='center', justify='center').pack()
-        tk.Label(percent_card, text=f"{percentage:.1f}%", font=('Segoe UI', 24, 'bold'),
-                bg=self.colors['success'], fg='white').pack()
+        self._stats_labels['percentage'] = tk.Label(percent_card, text=f"{stats['percentage']:.1f}%", font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['success'], fg='white')
+        self._stats_labels['percentage'].pack()
         tk.Label(percent_card, text="Percentage of Year", font=('Segoe UI', 10),
                 bg=self.colors['success'], fg='white').pack()
         
@@ -2155,8 +2196,9 @@ class ModernTravelCalendar:
         
         tk.Label(locations_card, text="🌍", font=('Segoe UI', 20),
                 bg=self.colors['accent'], fg='white', anchor='center', justify='center').pack()
-        tk.Label(locations_card, text=str(len(locations)), font=('Segoe UI', 24, 'bold'),
-                bg=self.colors['accent'], fg='white').pack()
+        self._stats_labels['locations'] = tk.Label(locations_card, text=str(stats['locations_count']), font=('Segoe UI', 24, 'bold'),
+                bg=self.colors['accent'], fg='white')
+        self._stats_labels['locations'].pack()
         tk.Label(locations_card, text="Locations Visited ", font=('Segoe UI', 10),
                 bg=self.colors['accent'], fg='white').pack()
         
@@ -2436,6 +2478,8 @@ class ModernTravelCalendar:
             delattr(self, '_current_records_tree')
         if hasattr(self, '_current_search_var'):
             delattr(self, '_current_search_var')
+        if hasattr(self, '_stats_labels'):
+            delattr(self, '_stats_labels')
 
 def main():
     root = tk.Tk()
