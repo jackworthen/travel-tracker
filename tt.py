@@ -793,8 +793,8 @@ class ModernTravelCalendar:
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Travel Report", command=self.show_report, accelerator="(Ctrl+R)")
         view_menu.add_separator()
-        view_menu.add_command(label="Settings", command=self.show_validation_settings, accelerator="(Ctrl+S)")
         view_menu.add_command(label="Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
+        view_menu.add_command(label="Settings", command=self.show_validation_settings, accelerator="(Ctrl+S)")
         
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -837,7 +837,7 @@ class ModernTravelCalendar:
         
         # Allow overlaps setting
         settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
-        tk.Checkbutton(date_inner, text="Allow overlapping travel dates",
+        tk.Checkbutton(date_inner, text="Allow Overlapping Dates",
                       variable=settings_vars['allow_overlaps'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
@@ -852,7 +852,7 @@ class ModernTravelCalendar:
             else:
                 future_entry.config(state='disabled')
         
-        tk.Checkbutton(date_inner, text="Warn about far future dates",
+        tk.Checkbutton(date_inner, text="Limit Future Dates",
                       variable=settings_vars['warn_future_dates'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11),
@@ -862,7 +862,7 @@ class ModernTravelCalendar:
         future_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
         future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 15))
         
-        tk.Label(future_days_frame, text="Days in future to warn:",
+        tk.Label(future_days_frame, text="Future Limit:",
                 font=('Segoe UI', 10),
                 fg=self.colors['text_light'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
@@ -886,7 +886,7 @@ class ModernTravelCalendar:
             else:
                 past_entry.config(state='disabled')
         
-        tk.Checkbutton(date_inner, text="Warn about old past dates",
+        tk.Checkbutton(date_inner, text="Limit Past Dates",
                       variable=settings_vars['warn_past_dates'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11),
@@ -896,7 +896,7 @@ class ModernTravelCalendar:
         past_days_frame = tk.Frame(date_inner, bg=self.colors['surface'])
         past_days_frame.pack(fill=tk.X, padx=(20, 0))
         
-        tk.Label(past_days_frame, text="Days in past to warn:",
+        tk.Label(past_days_frame, text="Past Limit:",
                 font=('Segoe UI', 10),
                 fg=self.colors['text_light'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
@@ -921,7 +921,7 @@ class ModernTravelCalendar:
         location_frame = tk.Frame(length_inner, bg=self.colors['surface'])
         location_frame.pack(fill=tk.X, pady=(0, 15))
         
-        tk.Label(location_frame, text="Maximum location length:",
+        tk.Label(location_frame, text="Max. Location Length:",
                 font=('Segoe UI', 11),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
@@ -935,7 +935,7 @@ class ModernTravelCalendar:
         comment_frame = tk.Frame(length_inner, bg=self.colors['surface'])
         comment_frame.pack(fill=tk.X)
         
-        tk.Label(comment_frame, text="Maximum comment length:",
+        tk.Label(comment_frame, text="Max. Notes Length:",
                 font=('Segoe UI', 11),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
@@ -1506,10 +1506,11 @@ class ModernTravelCalendar:
         
         # Update year dropdown in report window if it's open
         if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
-            hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and 
+            hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
+            hasattr(self, '_current_search_var') and 
             self.report_window and self.report_window.winfo_exists()):
             self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
-                                     self._current_filter_vars, self._current_records_tree)
+                                     self._current_filter_vars, self._current_records_tree, self._current_search_var)
         
         self.clear_form()
         
@@ -1540,8 +1541,8 @@ class ModernTravelCalendar:
     def configure_treeview_tags(self, records_tree):
         """Configure modern color tags for the treeview"""
         records_tree.tag_configure('past', 
-                                  background='#f1f5f9', 
-                                  foreground='#64748b')
+                                  background='#dbeafe', 
+                                  foreground='#1e40af')
         records_tree.tag_configure('current', 
                                   background='#dcfce7', 
                                   foreground='#15803d')
@@ -1549,7 +1550,7 @@ class ModernTravelCalendar:
                                   background='#fef3c7', 
                                   foreground='#d97706')
     
-    def update_records_display_filtered(self, records_tree, filter_vars, year_var=None):
+    def update_records_display_filtered(self, records_tree, filter_vars, year_var=None, search_var=None):
         """Update the travel records display with filtering applied"""
         # Clear existing items
         for item in records_tree.get_children():
@@ -1579,6 +1580,14 @@ class ModernTravelCalendar:
             except:
                 pass
         
+        # Get search text
+        search_text = ""
+        if search_var:
+            search_text = search_var.get().strip().lower()
+            # Don't search if it's the placeholder text
+            if search_text == "search locations, dates, or notes...":
+                search_text = ""
+        
         # Filter records
         filtered_records = []
         for record in self.travel_records:
@@ -1597,6 +1606,19 @@ class ModernTravelCalendar:
                     if not (start_date.year <= selected_year <= end_date.year):
                         continue
                 except:
+                    continue
+            
+            # Check search filter
+            if search_text:
+                # Search in location, dates, and comments
+                searchable_text = (
+                    record['location'].lower() + " " +
+                    record['start_date'].lower() + " " +
+                    record['end_date'].lower() + " " +
+                    record.get('comment', '').lower()
+                )
+                
+                if search_text not in searchable_text:
                     continue
             
             filtered_records.append(record)
@@ -1711,7 +1733,7 @@ class ModernTravelCalendar:
                 messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Calendar navigated to travel dates. Click 'Save Travel' to update.")
                 break
     
-    def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree):
+    def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree, search_var=None):
         """Update the year dropdown with current available years"""
         # Get available years
         available_years = self.get_available_years()
@@ -1733,7 +1755,7 @@ class ModernTravelCalendar:
             year_var.set("All Years")
         
         # Refresh the records display with updated year filter
-        self.update_records_display_filtered(records_tree, filter_vars, year_var)
+        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
 
     def delete_record(self, records_tree, report_window=None):
         """Delete selected travel record from the report window"""
@@ -1767,9 +1789,10 @@ class ModernTravelCalendar:
             
             # Update year dropdown and records display
             if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
-                hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree')):
+                hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
+                hasattr(self, '_current_search_var')):
                 self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
-                                         self._current_filter_vars, self._current_records_tree)
+                                         self._current_filter_vars, self._current_records_tree, self._current_search_var)
             else:
                 # Fallback: just update records display
                 self.update_records_display(records_tree)
@@ -1999,14 +2022,76 @@ class ModernTravelCalendar:
         available_years = self.get_available_years()
         current_year = datetime.now().year
         
+        # Search variable (define early so it's available in toggle button functions)
+        search_var = tk.StringVar()
+        
+        # Search field (first row - above Year and Status)
+        search_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
+        search_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(search_frame, text="🔍 Search:", 
+                font=('Segoe UI', 12, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Create a styled frame for the search entry
+        search_entry_frame = tk.Frame(search_frame, bg=self.colors['background'], 
+                                     relief='solid', bd=2, padx=2, pady=2)
+        search_entry_frame.pack(side=tk.LEFT)
+        
+        # Search entry with enhanced styling
+        search_entry = tk.Entry(search_entry_frame, textvariable=search_var,
+                               font=('Segoe UI', 11),
+                               width=35,
+                               bg=self.colors['surface'],
+                               fg=self.colors['text'],
+                               relief='flat', bd=0,
+                               insertbackground=self.colors['primary'])
+        search_entry.pack(padx=8, pady=6)
+        
+        # Add placeholder text behavior
+        placeholder_text = "Search locations, dates, or notes..."
+        
+        def on_search_focus_in(event):
+            if search_var.get() == placeholder_text:
+                search_var.set("")
+                search_entry.config(fg=self.colors['text'])
+                search_entry_frame.config(bg='#e0f2fe', bd=2)  # Much lighter blue
+        
+        def on_search_focus_out(event):
+            if not search_var.get().strip():
+                search_var.set(placeholder_text)
+                search_entry.config(fg=self.colors['text_light'])
+            search_entry_frame.config(bg=self.colors['background'], bd=2)
+        
+        def on_search_change(*args):
+            # Don't filter if showing placeholder text
+            if search_var.get() == placeholder_text:
+                return
+            # Filter records in real time
+            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+        
+        # Set initial placeholder
+        search_var.set(placeholder_text)
+        search_entry.config(fg=self.colors['text_light'])
+        
+        # Bind events
+        search_entry.bind('<FocusIn>', on_search_focus_in)
+        search_entry.bind('<FocusOut>', on_search_focus_out)
+        search_var.trace('w', on_search_change)
+        
+        # Year and Status filters (second row - below Search)
+        year_status_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
+        year_status_frame.pack(fill=tk.X)
+        
         # Year filter
-        tk.Label(filter_inner, text="📅 Year:", 
+        tk.Label(year_status_frame, text="📅 Year:", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
         
         year_var = tk.StringVar()
-        year_combo = ttk.Combobox(filter_inner, textvariable=year_var, 
+        year_combo = ttk.Combobox(year_status_frame, textvariable=year_var, 
                                  style='Modern.TCombobox', 
                                  font=('Segoe UI', 10),
                                  width=12, state="readonly")
@@ -2028,38 +2113,82 @@ class ModernTravelCalendar:
         self._current_year_var = year_var
         self._current_filter_vars = filter_vars
         
-        # Status filters (same row)
-        filter_items = [
-            ("Past", "#f1f5f9", "#64748b", filter_vars['past']),
-            ("Current", "#dcfce7", "#15803d", filter_vars['current']),
-            ("Future", "#fef3c7", "#d97706", filter_vars['future'])
-        ]
+        # Status toggle buttons (same row as Year)
+        tk.Label(year_status_frame, text="📊 Status:", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
         
-        # Create filter checkboxes with labels
-        for i, (text, bg_color, fg_color, var) in enumerate(filter_items):
-            # Container for checkbox and label
-            filter_container = tk.Frame(filter_inner, bg=self.colors['surface'])
-            filter_container.pack(side=tk.LEFT, padx=(0, 30))
+        # Create toggle buttons
+        toggle_buttons = {}
+        
+        def create_toggle_button(parent, text, var_name, bg_color, text_color):
+            """Create a modern toggle button"""
+            def toggle_state():
+                # Toggle the variable
+                filter_vars[var_name].set(not filter_vars[var_name].get())
+                # Update button appearance
+                update_button_appearance()
+                # Update records display
+                self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
             
-            # Checkbox to the left of label
-            checkbox = tk.Checkbutton(filter_container, 
-                                    variable=var,
-                                    bg=self.colors['surface'],
-                                    activebackground=self.colors['surface'],
-                                    relief='flat',
-                                    command=lambda: self.update_records_display_filtered(records_tree, filter_vars, year_var))
-            checkbox.pack(side=tk.LEFT, padx=(0, 2))
+            # Create the button
+            btn = tk.Button(parent, text=text,
+                          font=('Segoe UI', 10, 'bold'),
+                          relief='flat', bd=0, padx=16, pady=8,
+                          cursor='hand2',
+                          command=toggle_state)
             
-            # Color-coded label to the right of checkbox
-            filter_label = tk.Label(filter_container, text=f"  {text}  ",
-                                  bg=bg_color, fg=fg_color,
-                                  relief="solid", borderwidth=1,
-                                  font=('Segoe UI', 10))
-            filter_label.pack(side=tk.LEFT)
+            # Store button reference and colors
+            toggle_buttons[var_name] = {
+                'button': btn,
+                'active_bg': bg_color,
+                'active_fg': text_color,
+                'inactive_bg': '#e2e8f0',  # Light gray
+                'inactive_fg': '#64748b'   # Darker gray text
+            }
+            
+            return btn
+        
+        def update_button_appearance():
+            """Update the appearance of all toggle buttons based on their state"""
+            for var_name, btn_info in toggle_buttons.items():
+                btn = btn_info['button']
+                is_active = filter_vars[var_name].get()
+                
+                if is_active:
+                    # Active state - colored
+                    btn.config(
+                        bg=btn_info['active_bg'],
+                        fg=btn_info['active_fg'],
+                        activebackground=btn_info['active_bg'],
+                        activeforeground=btn_info['active_fg']
+                    )
+                else:
+                    # Inactive state - gray
+                    btn.config(
+                        bg=btn_info['inactive_bg'],
+                        fg=btn_info['inactive_fg'],
+                        activebackground='#cbd5e1',
+                        activeforeground=btn_info['inactive_fg']
+                    )
+        
+        # Create the toggle buttons
+        past_btn = create_toggle_button(year_status_frame, "Past", "past", "#dbeafe", "#1e40af")
+        past_btn.pack(side=tk.LEFT, padx=(0, 8))
+        
+        current_btn = create_toggle_button(year_status_frame, "Current", "current", "#dcfce7", "#15803d")
+        current_btn.pack(side=tk.LEFT, padx=(0, 8))
+        
+        future_btn = create_toggle_button(year_status_frame, "Future", "future", "#fef3c7", "#d97706")
+        future_btn.pack(side=tk.LEFT)
+        
+        # Set initial button appearances
+        update_button_appearance()
         
         # Bind year selection change
         year_combo.bind('<<ComboboxSelected>>', 
-                       lambda e: self.update_records_display_filtered(records_tree, filter_vars, year_var))
+                       lambda e: self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var))
         
         # Travel records
         records_frame = ttk.LabelFrame(main_container, text="📋 Travel Records", style='Card.TLabelframe')
@@ -2102,8 +2231,11 @@ class ModernTravelCalendar:
         # Store reference to records tree for updates
         self._current_records_tree = records_tree
         
+        # Store search variable reference
+        self._current_search_var = search_var
+        
         # Initial records display with filtering
-        self.update_records_display_filtered(records_tree, filter_vars, year_var)
+        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
         
         # Action buttons
         buttons_frame = tk.Frame(main_container, bg=self.colors['background'])
@@ -2148,6 +2280,8 @@ class ModernTravelCalendar:
             delattr(self, '_current_filter_vars')
         if hasattr(self, '_current_records_tree'):
             delattr(self, '_current_records_tree')
+        if hasattr(self, '_current_search_var'):
+            delattr(self, '_current_search_var')
 
 def main():
     root = tk.Tk()
