@@ -959,7 +959,7 @@ class ModernTravelCalendar:
         toggle_content = tk.Frame(toggle_tab, bg=self.colors['surface'], padx=20, pady=20)
         toggle_content.pack(fill=tk.BOTH, expand=True)
         
-        tk.Label(toggle_content, text="Default Satus Toggles",
+        tk.Label(toggle_content, text="Set Default Satus Toggles",
                 font=('Segoe UI', 11),
                 fg=self.colors['text_light'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 20))
