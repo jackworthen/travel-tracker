@@ -78,6 +78,22 @@ class ModernTravelCalendar:
         self.update_calendar_display()
         self.update_location_dropdown()
     
+    def format_date_for_display(self, date_str: str) -> str:
+        """Convert YYYY-MM-DD format to MM-DD-YYYY for display"""
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            return date_obj.strftime('%m-%d-%Y')
+        except ValueError:
+            return date_str  # Return original if parsing fails
+    
+    def parse_display_date_to_storage(self, date_str: str) -> str:
+        """Convert MM-DD-YYYY display format back to YYYY-MM-DD storage format"""
+        try:
+            date_obj = datetime.strptime(date_str, '%m-%d-%Y')
+            return date_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            return date_str  # Return original if parsing fails
+    
     def get_data_directory(self):
         """Get the appropriate data directory for the current OS"""
         app_name = "TravelTracker"
@@ -200,8 +216,8 @@ class ModernTravelCalendar:
         
         date_string = date_string.strip()
         
-        # Try multiple date formats
-        formats = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%m-%d-%Y', '%d-%m-%Y']
+        # Try multiple date formats - Updated to prioritize MM-DD-YYYY
+        formats = ['%m-%d-%Y', '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']
         
         for fmt in formats:
             try:
@@ -219,7 +235,7 @@ class ModernTravelCalendar:
             except ValueError:
                 continue
         
-        return False, None, f"Invalid date format. Please use YYYY-MM-DD, MM/DD/YYYY, or DD/MM/YYYY"
+        return False, None, f"Invalid date format. Please use MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, or DD/MM/YYYY"
     
     def validate_date_range(self, start_date: datetime, end_date: datetime) -> Tuple[bool, str]:
         """
@@ -406,8 +422,8 @@ class ModernTravelCalendar:
         
         for i, conflict in enumerate(conflicting_records, 1):
             record = conflict['record']
-            start_str = conflict['start_date'].strftime('%Y-%m-%d')
-            end_str = conflict['end_date'].strftime('%Y-%m-%d')
+            start_str = self.format_date_for_display(record['start_date'])
+            end_str = self.format_date_for_display(record['end_date'])
             location = record['location']
             
             conflict_text = f"{i}. {start_str} to {end_str} - {location}\n"
@@ -1435,29 +1451,29 @@ class ModernTravelCalendar:
             # First click - set start date
             self.selected_start_date = clicked_date
             self.start_date_entry.delete(0, tk.END)
-            self.start_date_entry.insert(0, clicked_date.strftime('%Y-%m-%d'))
+            self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
             self.selecting_range = True
         elif self.selecting_range:
             # Second click - set end date
             if clicked_date >= self.selected_start_date:
                 self.selected_end_date = clicked_date
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, clicked_date.strftime('%Y-%m-%d'))
+                self.end_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
             else:
                 # If clicked date is before start date, swap them
                 self.selected_end_date = self.selected_start_date
                 self.selected_start_date = clicked_date
                 self.start_date_entry.delete(0, tk.END)
-                self.start_date_entry.insert(0, clicked_date.strftime('%Y-%m-%d'))
+                self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, self.selected_end_date.strftime('%Y-%m-%d'))
+                self.end_date_entry.insert(0, self.format_date_for_display(self.selected_end_date.strftime('%Y-%m-%d')))
             self.selecting_range = False
         else:
             # Start new selection
             self.selected_start_date = clicked_date
             self.selected_end_date = None
             self.start_date_entry.delete(0, tk.END)
-            self.start_date_entry.insert(0, clicked_date.strftime('%Y-%m-%d'))
+            self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
             self.end_date_entry.delete(0, tk.END)
             self.selecting_range = True
         
@@ -1759,8 +1775,8 @@ class ModernTravelCalendar:
             color_tag = self.get_record_color_tag(record)
             
             records_tree.insert('', tk.END, values=(
-                record['start_date'],
-                record['end_date'],
+                self.format_date_for_display(record['start_date']),
+                self.format_date_for_display(record['end_date']),
                 record['location'],
                 comment
             ), tags=(color_tag,))
@@ -1786,8 +1802,8 @@ class ModernTravelCalendar:
             color_tag = self.get_record_color_tag(record)
             
             records_tree.insert('', tk.END, values=(
-                record['start_date'],
-                record['end_date'],
+                self.format_date_for_display(record['start_date']),
+                self.format_date_for_display(record['end_date']),
                 record['location'],
                 comment
             ), tags=(color_tag,))
@@ -1806,27 +1822,31 @@ class ModernTravelCalendar:
         values = records_tree.item(item, 'values')
         
         # Find the actual record index
-        start_date_str = values[0]
-        end_date_str = values[1]
+        start_date_display = values[0]
+        end_date_display = values[1]
         location_str = values[2]
         comment_display = values[3]
+        
+        # Convert display dates back to storage format for matching
+        start_date_storage = self.parse_display_date_to_storage(start_date_display)
+        end_date_storage = self.parse_display_date_to_storage(end_date_display)
         
         # Find the matching record
         for i, record in enumerate(self.travel_records):
             record_comment = record.get('comment', '')
             display_comment = record_comment[:47] + "..." if len(record_comment) > 50 else record_comment
             
-            if (record['start_date'] == start_date_str and 
-                record['end_date'] == end_date_str and 
+            if (record['start_date'] == start_date_storage and 
+                record['end_date'] == end_date_storage and 
                 record['location'] == location_str and
                 display_comment == comment_display):
                 
                 # Populate main window with record data
                 self.start_date_entry.delete(0, tk.END)
-                self.start_date_entry.insert(0, record['start_date'])
+                self.start_date_entry.insert(0, self.format_date_for_display(record['start_date']))
                 
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, record['end_date'])
+                self.end_date_entry.insert(0, self.format_date_for_display(record['end_date']))
                 
                 self.location_entry.delete(0, tk.END)
                 self.location_entry.insert(0, record['location'])
@@ -1893,13 +1913,17 @@ class ModernTravelCalendar:
             item = selection[0]
             values = records_tree.item(item, 'values')
             
+            # Convert display dates back to storage format for matching
+            start_date_storage = self.parse_display_date_to_storage(values[0])
+            end_date_storage = self.parse_display_date_to_storage(values[1])
+            
             # Find and remove the record
             for i, record in enumerate(self.travel_records):
                 record_comment = record.get('comment', '')
                 display_comment = record_comment[:47] + "..." if len(record_comment) > 50 else record_comment
                 
-                if (record['start_date'] == values[0] and 
-                    record['end_date'] == values[1] and 
+                if (record['start_date'] == start_date_storage and 
+                    record['end_date'] == end_date_storage and 
                     record['location'] == values[2] and
                     display_comment == values[3]):
                     del self.travel_records[i]
@@ -1965,8 +1989,8 @@ class ModernTravelCalendar:
             color_tag = self.get_record_color_tag(record)
             
             records_tree.insert('', tk.END, values=(
-                record['start_date'],
-                record['end_date'],
+                self.format_date_for_display(record['start_date']),
+                self.format_date_for_display(record['end_date']),
                 record['location'],
                 comment
             ), tags=(color_tag,))
