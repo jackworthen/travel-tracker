@@ -1927,7 +1927,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("785x800")
+        report_window.geometry("785x825")
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
@@ -2084,36 +2084,7 @@ class ModernTravelCalendar:
         year_status_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
         year_status_frame.pack(fill=tk.X)
         
-        # Year filter
-        tk.Label(year_status_frame, text="📅 Year:", 
-                font=('Segoe UI', 11, 'bold'),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
-        
-        year_var = tk.StringVar()
-        year_combo = ttk.Combobox(year_status_frame, textvariable=year_var, 
-                                 style='Modern.TCombobox', 
-                                 font=('Segoe UI', 10),
-                                 width=12, state="readonly")
-        
-        # Populate year dropdown
-        year_options = ["All Years"] + [str(year) for year in available_years]
-        year_combo['values'] = year_options
-        
-        # Set default to current year if available, otherwise "All Years"
-        if str(current_year) in year_options:
-            year_var.set(str(current_year))
-        else:
-            year_var.set("All Years")
-        
-        year_combo.pack(side=tk.LEFT, padx=(0, 30))
-        
-        # Store references for updating when records are modified
-        self._current_year_combo = year_combo
-        self._current_year_var = year_var
-        self._current_filter_vars = filter_vars
-        
-        # Status toggle buttons (same row as Year)
+        # Status toggle buttons (first on the row)
         tk.Label(year_status_frame, text="📊 Status:", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
@@ -2181,10 +2152,39 @@ class ModernTravelCalendar:
         current_btn.pack(side=tk.LEFT, padx=(0, 8))
         
         future_btn = create_toggle_button(year_status_frame, "Future", "future", "#fef3c7", "#d97706")
-        future_btn.pack(side=tk.LEFT)
+        future_btn.pack(side=tk.LEFT, padx=(0, 30))
         
         # Set initial button appearances
         update_button_appearance()
+        
+        # Year filter (second on the row, to the right of Status)
+        tk.Label(year_status_frame, text="📅 Year:", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
+        
+        year_var = tk.StringVar()
+        year_combo = ttk.Combobox(year_status_frame, textvariable=year_var, 
+                                 style='Modern.TCombobox', 
+                                 font=('Segoe UI', 10),
+                                 width=12, state="readonly")
+        
+        # Populate year dropdown
+        year_options = ["All Years"] + [str(year) for year in available_years]
+        year_combo['values'] = year_options
+        
+        # Set default to current year if available, otherwise "All Years"
+        if str(current_year) in year_options:
+            year_var.set(str(current_year))
+        else:
+            year_var.set("All Years")
+        
+        year_combo.pack(side=tk.LEFT)
+        
+        # Store references for updating when records are modified
+        self._current_year_combo = year_combo
+        self._current_year_var = year_var
+        self._current_filter_vars = filter_vars
         
         # Bind year selection change
         year_combo.bind('<<ComboboxSelected>>', 
