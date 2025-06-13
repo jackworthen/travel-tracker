@@ -79,10 +79,18 @@ class ModernTravelCalendar:
         self.update_location_dropdown()
     
     def format_date_for_display(self, date_str: str) -> str:
-        """Convert YYYY-MM-DD format to MM-DD-YYYY for display"""
+        """Convert YYYY-MM-DD format to MM-DD-YYYY for display in reports"""
         try:
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
             return date_obj.strftime('%m-%d-%Y')
+        except ValueError:
+            return date_str  # Return original if parsing fails
+    
+    def format_date_for_entry(self, date_str: str) -> str:
+        """Convert YYYY-MM-DD format to MM/DD/YYYY for entry fields"""
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            return date_obj.strftime('%m/%d/%Y')
         except ValueError:
             return date_str  # Return original if parsing fails
     
@@ -90,6 +98,14 @@ class ModernTravelCalendar:
         """Convert MM-DD-YYYY display format back to YYYY-MM-DD storage format"""
         try:
             date_obj = datetime.strptime(date_str, '%m-%d-%Y')
+            return date_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            return date_str  # Return original if parsing fails
+    
+    def parse_entry_date_to_storage(self, date_str: str) -> str:
+        """Convert MM/DD/YYYY entry format back to YYYY-MM-DD storage format"""
+        try:
+            date_obj = datetime.strptime(date_str, '%m/%d/%Y')
             return date_obj.strftime('%Y-%m-%d')
         except ValueError:
             return date_str  # Return original if parsing fails
@@ -216,8 +232,8 @@ class ModernTravelCalendar:
         
         date_string = date_string.strip()
         
-        # Try multiple date formats - Updated to prioritize MM-DD-YYYY
-        formats = ['%m-%d-%Y', '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']
+        # Try multiple date formats - Updated to prioritize MM/DD/YYYY for entry fields
+        formats = ['%m/%d/%Y', '%m-%d-%Y', '%Y-%m-%d', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']
         
         for fmt in formats:
             try:
@@ -235,7 +251,7 @@ class ModernTravelCalendar:
             except ValueError:
                 continue
         
-        return False, None, f"Invalid date format. Please use MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, or DD/MM/YYYY"
+        return False, None, f"Invalid date format. Please use MM/DD/YYYY, MM-DD-YYYY, YYYY-MM-DD, or DD/MM/YYYY"
     
     def validate_date_range(self, start_date: datetime, end_date: datetime) -> Tuple[bool, str]:
         """
@@ -1451,29 +1467,29 @@ class ModernTravelCalendar:
             # First click - set start date
             self.selected_start_date = clicked_date
             self.start_date_entry.delete(0, tk.END)
-            self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
+            self.start_date_entry.insert(0, self.format_date_for_entry(clicked_date.strftime('%Y-%m-%d')))
             self.selecting_range = True
         elif self.selecting_range:
             # Second click - set end date
             if clicked_date >= self.selected_start_date:
                 self.selected_end_date = clicked_date
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
+                self.end_date_entry.insert(0, self.format_date_for_entry(clicked_date.strftime('%Y-%m-%d')))
             else:
                 # If clicked date is before start date, swap them
                 self.selected_end_date = self.selected_start_date
                 self.selected_start_date = clicked_date
                 self.start_date_entry.delete(0, tk.END)
-                self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
+                self.start_date_entry.insert(0, self.format_date_for_entry(clicked_date.strftime('%Y-%m-%d')))
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, self.format_date_for_display(self.selected_end_date.strftime('%Y-%m-%d')))
+                self.end_date_entry.insert(0, self.format_date_for_entry(self.selected_end_date.strftime('%Y-%m-%d')))
             self.selecting_range = False
         else:
             # Start new selection
             self.selected_start_date = clicked_date
             self.selected_end_date = None
             self.start_date_entry.delete(0, tk.END)
-            self.start_date_entry.insert(0, self.format_date_for_display(clicked_date.strftime('%Y-%m-%d')))
+            self.start_date_entry.insert(0, self.format_date_for_entry(clicked_date.strftime('%Y-%m-%d')))
             self.end_date_entry.delete(0, tk.END)
             self.selecting_range = True
         
@@ -1843,10 +1859,10 @@ class ModernTravelCalendar:
                 
                 # Populate main window with record data
                 self.start_date_entry.delete(0, tk.END)
-                self.start_date_entry.insert(0, self.format_date_for_display(record['start_date']))
+                self.start_date_entry.insert(0, self.format_date_for_entry(record['start_date']))
                 
                 self.end_date_entry.delete(0, tk.END)
-                self.end_date_entry.insert(0, self.format_date_for_display(record['end_date']))
+                self.end_date_entry.insert(0, self.format_date_for_entry(record['end_date']))
                 
                 self.location_entry.delete(0, tk.END)
                 self.location_entry.insert(0, record['location'])
