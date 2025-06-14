@@ -979,21 +979,21 @@ class ModernTravelCalendar:
         
         # Past toggle default
         settings_vars['default_show_past'] = tk.BooleanVar(value=self.validation_settings['default_show_past'])
-        tk.Checkbutton(report_content, text="Past Trips",
+        tk.Checkbutton(report_content, text="Display Past Trips",
                       variable=settings_vars['default_show_past'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Current toggle default
         settings_vars['default_show_current'] = tk.BooleanVar(value=self.validation_settings['default_show_current'])
-        tk.Checkbutton(report_content, text="Current Trips",
+        tk.Checkbutton(report_content, text="Display Current Trips",
                       variable=settings_vars['default_show_current'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Future toggle default
         settings_vars['default_show_future'] = tk.BooleanVar(value=self.validation_settings['default_show_future'])
-        tk.Checkbutton(report_content, text="Future Trips",
+        tk.Checkbutton(report_content, text="Display Future Trips",
                       variable=settings_vars['default_show_future'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W)
