@@ -2092,8 +2092,8 @@ class ModernTravelCalendar:
     def update_column_headers(self, records_tree, sorted_column):
         """Update column headers to show sort indicators"""
         # Reset all headers first
-        records_tree.heading('Start', text='Start Date', anchor='w')
-        records_tree.heading('End', text='End Date', anchor='w')
+        records_tree.heading('Start', text='Depart', anchor='w')
+        records_tree.heading('End', text='Return', anchor='w')
         records_tree.heading('Days', text='Days', anchor='w')
         records_tree.heading('Location', text='Location', anchor='w')
         records_tree.heading('Comment', text='Notes', anchor='w')
@@ -2102,9 +2102,9 @@ class ModernTravelCalendar:
         if sorted_column:
             arrow = ' ↓' if self.sort_reverse else ' ↑'
             if sorted_column == 'Start':
-                records_tree.heading('Start', text=f'Start Date{arrow}', anchor='w')
+                records_tree.heading('Start', text=f'Depart{arrow}', anchor='w')
             elif sorted_column == 'End':
-                records_tree.heading('End', text=f'End Date{arrow}', anchor='w')
+                records_tree.heading('End', text=f'Return{arrow}', anchor='w')
             elif sorted_column == 'Days':
                 records_tree.heading('Days', text=f'Days{arrow}', anchor='w')
             elif sorted_column == 'Location':
@@ -2480,9 +2480,9 @@ class ModernTravelCalendar:
                                    show='headings', height=15)
         
         # Configure headers with sorting functionality
-        records_tree.heading('Start', text='Start Date', anchor='w',
+        records_tree.heading('Start', text='Depart', anchor='w',
                            command=lambda: self.sort_records(records_tree, 'Start'))
-        records_tree.heading('End', text='End Date', anchor='w',
+        records_tree.heading('End', text='Return', anchor='w',
                            command=lambda: self.sort_records(records_tree, 'End'))
         records_tree.heading('Days', text='Days', anchor='w',
                            command=lambda: self.sort_records(records_tree, 'Days'))
