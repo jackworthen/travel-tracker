@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, filedialog
 import calendar
 import json
 import os
@@ -8,6 +8,7 @@ import shutil
 import sys
 import subprocess
 import webbrowser
+import csv
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
@@ -75,7 +76,10 @@ class ModernTravelCalendar:
             # Status toggle defaults
             'default_show_past': False,
             'default_show_current': True,
-            'default_show_future': True
+            'default_show_future': True,
+            # Export settings
+            'export_delimiter': ',',  # Default to comma
+            'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home())  # Default to Downloads or Home folder
         }
         self.load_config()  # Load saved settings from config file
         
@@ -669,7 +673,191 @@ class ModernTravelCalendar:
         self.root.wait_window(dialog)
         return result['continue']
     
-    # ========== END VALIDATION METHODS ==========
+    def get_default_export_directory(self):
+        """Get the default export directory, falling back to safe alternatives"""
+        try:
+            # Try the user's configured directory first
+            configured_dir = Path(self.validation_settings['export_directory'])
+            if configured_dir.exists() and configured_dir.is_dir():
+                return str(configured_dir)
+        except:
+            pass
+        
+        # Try common directories as fallbacks
+        fallback_dirs = [
+            Path.home() / 'Documents',
+            Path.home() / 'Downloads', 
+            Path.home() / 'Desktop',
+            Path.home(),
+            Path.cwd()
+        ]
+        
+        for directory in fallback_dirs:
+            try:
+                if directory.exists() and directory.is_dir():
+                    return str(directory)
+            except:
+                continue
+        
+        # Last resort - current working directory
+        return str(Path.cwd())
+    
+    def export_travel_records(self):
+        """Export currently filtered travel records to CSV"""
+        # Check if we have the necessary references from the report window
+        if not (hasattr(self, '_current_filter_vars') and hasattr(self, '_current_year_var') and 
+                hasattr(self, '_current_search_var')):
+            messagebox.showerror("Export Error", "Please open the Travel Report window before exporting.")
+            return
+        
+        # Get filtered records using the same logic as the display
+        filtered_records = self.get_filtered_records(
+            self._current_filter_vars, 
+            self._current_year_var, 
+            self._current_search_var
+        )
+        
+        if not filtered_records:
+            messagebox.showwarning("No Data", "No records match the current filters. Nothing to export.")
+            return
+        
+        # Get export settings
+        delimiter = self.validation_settings['export_delimiter']
+        
+        # Prepare default filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"travel_records_{timestamp}.csv"
+        
+        # Get initial directory
+        initial_dir = self.get_default_export_directory()
+        
+        # Open file dialog
+        file_path = filedialog.asksaveasfilename(
+            title="Export Travel Records",
+            initialdir=initial_dir,
+            initialfile=default_filename,
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        try:
+            # Write CSV file
+            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL)
+                
+                # Write header
+                writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
+                
+                # Write data
+                for record in filtered_records:
+                    days = self.calculate_trip_days(record['start_date'], record['end_date'])
+                    writer.writerow([
+                        self.format_date_for_display(record['start_date']),
+                        self.format_date_for_display(record['end_date']),
+                        str(days),
+                        record['location'],
+                        record.get('comment', '')
+                    ])
+            
+            # Show success message
+            messagebox.showinfo("Export Successful", 
+                               f"✅ Successfully exported {len(filtered_records)} records to:\n{file_path}")
+        
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export records:\n{str(e)}")
+    
+    def get_filtered_records(self, filter_vars, year_var=None, search_var=None):
+        """Get records that match the current filters (same logic as display filtering)"""
+        # Get enabled filters
+        enabled_filters = []
+        if filter_vars['past'].get():
+            enabled_filters.append('past')
+        if filter_vars['current'].get():
+            enabled_filters.append('current')
+        if filter_vars['future'].get():
+            enabled_filters.append('future')
+        
+        # If no filters are enabled, return empty list
+        if not enabled_filters:
+            return []
+        
+        # Get selected year
+        selected_year = None
+        if year_var and year_var.get() != "All Years":
+            try:
+                selected_year = int(year_var.get())
+            except:
+                pass
+        
+        # Get search text
+        search_text = ""
+        if search_var:
+            search_text = search_var.get().strip().lower()
+            # Don't search if it's the placeholder text
+            if search_text == "search locations, dates, or notes...":
+                search_text = ""
+        
+        # Filter records
+        filtered_records = []
+        for record in self.travel_records:
+            # Check status filter
+            record_type = self.get_record_color_tag(record)
+            if record_type not in enabled_filters:
+                continue
+            
+            # Check year filter
+            if selected_year is not None:
+                try:
+                    start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                    end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                    
+                    # Include record if it overlaps with the selected year
+                    if not (start_date.year <= selected_year <= end_date.year):
+                        continue
+                except:
+                    continue
+            
+            # Check search filter
+            if search_text:
+                # Search in location, dates, and comments
+                searchable_text = (
+                    record['location'].lower() + " " +
+                    record['start_date'].lower() + " " +
+                    record['end_date'].lower() + " " +
+                    record.get('comment', '').lower()
+                )
+                
+                if search_text not in searchable_text:
+                    continue
+            
+            filtered_records.append(record)
+        
+        # Apply sorting if there is an active sort column
+        if self.sort_column:
+            # Define sort keys for different columns
+            def sort_key(record):
+                if self.sort_column == 'Start':
+                    return record['start_date']
+                elif self.sort_column == 'End':
+                    return record['end_date']
+                elif self.sort_column == 'Days':
+                    return self.calculate_trip_days(record['start_date'], record['end_date'])
+                elif self.sort_column == 'Location':
+                    return record['location'].lower()
+                return ''
+            
+            # Sort the filtered records
+            filtered_records = sorted(filtered_records, key=sort_key, reverse=self.sort_reverse)
+        else:
+            # Default sort by start date (oldest first) when no column sorting is active
+            filtered_records = sorted(filtered_records, key=lambda x: x['start_date'], reverse=False)
+        
+        return filtered_records
+    
+    # ========== END EXPORT METHODS ==========
     
     def setup_modern_styles(self):
         """Configure modern ttk styles"""
@@ -979,21 +1167,21 @@ class ModernTravelCalendar:
         
         # Past toggle default
         settings_vars['default_show_past'] = tk.BooleanVar(value=self.validation_settings['default_show_past'])
-        tk.Checkbutton(report_content, text="Display Past Trips",
+        tk.Checkbutton(report_content, text="Past Trips",
                       variable=settings_vars['default_show_past'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Current toggle default
         settings_vars['default_show_current'] = tk.BooleanVar(value=self.validation_settings['default_show_current'])
-        tk.Checkbutton(report_content, text="Display Current Trips",
+        tk.Checkbutton(report_content, text="Current Trips",
                       variable=settings_vars['default_show_current'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Future toggle default
         settings_vars['default_show_future'] = tk.BooleanVar(value=self.validation_settings['default_show_future'])
-        tk.Checkbutton(report_content, text="Display Future Trips",
+        tk.Checkbutton(report_content, text="Future Trips",
                       variable=settings_vars['default_show_future'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W)
@@ -1033,6 +1221,77 @@ class ModernTravelCalendar:
                                 width=10, font=('Segoe UI', 10))
         comment_entry.pack(side=tk.LEFT, padx=(10, 0))
         
+        # ========== EXPORT TAB ==========
+        export_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(export_tab, text="Export")
+        
+        export_content = tk.Frame(export_tab, bg=self.colors['surface'], padx=20, pady=20)
+        export_content.pack(fill=tk.BOTH, expand=True)
+        
+        # Delimiter setting - horizontal layout
+        delimiter_frame = tk.Frame(export_content, bg=self.colors['surface'])
+        delimiter_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(delimiter_frame, text="Delimiter:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['export_delimiter'] = tk.StringVar(value=self.validation_settings['export_delimiter'])
+        delimiter_combo = ttk.Combobox(delimiter_frame, textvariable=settings_vars['export_delimiter'],
+                                      values=["Comma ( , )", "Tab ( \\t )", "Semicolon ( ; )", "Pipe ( | )"],
+                                      state="readonly", width=18, font=('Segoe UI', 10))
+        
+        # Set the display value based on the stored delimiter
+        if self.validation_settings['export_delimiter'] == ',':
+            delimiter_combo.set("Comma ( , )")
+        elif self.validation_settings['export_delimiter'] == '\t':
+            delimiter_combo.set("Tab ( \\t )")
+        elif self.validation_settings['export_delimiter'] == ';':
+            delimiter_combo.set("Semicolon ( ; )")
+        else:  # pipe
+            delimiter_combo.set("Pipe ( | )")
+        
+        delimiter_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Export directory setting
+        directory_frame = tk.Frame(export_content, bg=self.colors['surface'])
+        directory_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(directory_frame, text="Export Directory:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
+        
+        directory_entry_frame = tk.Frame(directory_frame, bg=self.colors['surface'])
+        directory_entry_frame.pack(fill=tk.X)
+        
+        settings_vars['export_directory'] = tk.StringVar(value=self.validation_settings['export_directory'])
+        directory_entry = tk.Entry(directory_entry_frame, textvariable=settings_vars['export_directory'],
+                                  font=('Segoe UI', 10))
+        directory_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
+        def browse_directory():
+            """Browse for export directory"""
+            current_dir = settings_vars['export_directory'].get()
+            if not os.path.exists(current_dir):
+                current_dir = str(Path.home())
+            
+            new_dir = filedialog.askdirectory(
+                title="Select Export Directory",
+                initialdir=current_dir
+            )
+            
+            if new_dir:
+                settings_vars['export_directory'].set(new_dir)
+        
+        browse_btn = tk.Button(directory_entry_frame, text="Browse...",
+                              bg=self.colors['primary'], fg='white',
+                              font=('Segoe UI', 10, 'bold'),
+                              relief='flat', bd=0, padx=12, pady=6,
+                              command=browse_directory)
+        browse_btn.pack(side=tk.RIGHT)
+        
         # Buttons
         buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
         buttons_frame.grid(row=1, column=0, pady=(20, 0))
@@ -1053,11 +1312,24 @@ class ModernTravelCalendar:
                 self.validation_settings['default_show_current'] = settings_vars['default_show_current'].get()
                 self.validation_settings['default_show_future'] = settings_vars['default_show_future'].get()
                 
+                # Update export settings
+                delimiter_choice = settings_vars['export_delimiter'].get()
+                if delimiter_choice == "Tab ( \\t )":
+                    self.validation_settings['export_delimiter'] = '\t'
+                elif delimiter_choice == "Semicolon ( ; )":
+                    self.validation_settings['export_delimiter'] = ';'
+                elif delimiter_choice == "Pipe ( | )":
+                    self.validation_settings['export_delimiter'] = '|'
+                else:  # Default to comma
+                    self.validation_settings['export_delimiter'] = ','
+                
+                self.validation_settings['export_directory'] = settings_vars['export_directory'].get()
+                
                 # Save settings to config file
                 self.save_config()
                 
                 dialog.destroy()
-                messagebox.showinfo("Settings Saved", "✅ Validation settings have been updated and saved.")
+                messagebox.showinfo("Settings Saved", "✅ Settings have been updated and saved.")
             except ValueError as e:
                 messagebox.showerror("Invalid Input", f"Please enter valid numbers for all numeric fields.")
         
@@ -2534,6 +2806,14 @@ class ModernTravelCalendar:
                               activebackground='#dc2626', activeforeground='white',
                               command=lambda: self.delete_record(records_tree))
         delete_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        export_btn = tk.Button(buttons_frame, text="📤 Export",
+                              bg=self.colors['accent'], fg='white',
+                              font=('Segoe UI', 10, 'bold'),
+                              relief='flat', bd=0, padx=12, pady=8,
+                              activebackground='#0891b2', activeforeground='white',
+                              command=self.export_travel_records)
+        export_btn.pack(side=tk.LEFT, padx=(0, 10))
         
         close_btn = tk.Button(buttons_frame, text="✖️ Close",
                              bg=self.colors['secondary'], fg='white',
