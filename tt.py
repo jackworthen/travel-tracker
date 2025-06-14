@@ -831,7 +831,7 @@ class ModernTravelCalendar:
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Open Data Directory", command=self.open_data_location, accelerator="(Ctrl+D)")
+        file_menu.add_command(label="Open Data Directory", command=self.open_data_location, accelerator="(Ctrl+O)")
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.exit_application, accelerator="(Ctrl+Q)")
         
@@ -846,13 +846,14 @@ class ModernTravelCalendar:
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="Documentation", command=self.open_documentation)
+        help_menu.add_command(label="Documentation", command=self.open_documentation, accelerator="(Ctrl+D)")
         
         # Bind keyboard shortcuts
         self.root.bind('<Control-q>', lambda e: self.exit_application())
         self.root.bind('<Control-r>', lambda e: self.show_report())
         self.root.bind('<Control-s>', lambda e: self.show_validation_settings())
-        self.root.bind('<Control-d>', lambda e: self.open_data_location())
+        self.root.bind('<Control-o>', lambda e: self.open_data_location())
+        self.root.bind('<Control-d>', lambda e: self.open_documentation())
     
     def show_validation_settings(self):
         """Show dialog for configuring validation settings"""
@@ -961,35 +962,35 @@ class ModernTravelCalendar:
         if not settings_vars['warn_past_dates'].get():
             past_entry.config(state='disabled')
         
-        # ========== TOGGLE TAB ==========
-        toggle_tab = tk.Frame(notebook, bg=self.colors['surface'])
-        notebook.add(toggle_tab, text="Toggle")
+        # ========== REPORT TAB ==========
+        report_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(report_tab, text="Report")
         
-        toggle_content = tk.Frame(toggle_tab, bg=self.colors['surface'], padx=20, pady=20)
-        toggle_content.pack(fill=tk.BOTH, expand=True)
+        report_content = tk.Frame(report_tab, bg=self.colors['surface'], padx=20, pady=20)
+        report_content.pack(fill=tk.BOTH, expand=True)
         
-        tk.Label(toggle_content, text="Set Default Satus Toggles",
+        tk.Label(report_content, text="Set Default Status Toggles",
                 font=('Segoe UI', 11),
                 fg=self.colors['text_light'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 20))
         
         # Past toggle default
         settings_vars['default_show_past'] = tk.BooleanVar(value=self.validation_settings['default_show_past'])
-        tk.Checkbutton(toggle_content, text="Past Trips",
+        tk.Checkbutton(report_content, text="Past Trips",
                       variable=settings_vars['default_show_past'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Current toggle default
         settings_vars['default_show_current'] = tk.BooleanVar(value=self.validation_settings['default_show_current'])
-        tk.Checkbutton(toggle_content, text="Current Trips",
+        tk.Checkbutton(report_content, text="Current Trips",
                       variable=settings_vars['default_show_current'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
         
         # Future toggle default
         settings_vars['default_show_future'] = tk.BooleanVar(value=self.validation_settings['default_show_future'])
-        tk.Checkbutton(toggle_content, text="Future Trips",
+        tk.Checkbutton(report_content, text="Future Trips",
                       variable=settings_vars['default_show_future'],
                       bg=self.colors['surface'],
                       font=('Segoe UI', 11)).pack(anchor=tk.W)
