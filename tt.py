@@ -82,6 +82,15 @@ class ModernTravelCalendar:
         self.update_calendar_display()
         self.update_location_dropdown()
     
+    def calculate_trip_days(self, start_date_str: str, end_date_str: str) -> int:
+        """Calculate the number of days for a trip (inclusive of both start and end dates)"""
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            return (end_date - start_date).days + 1
+        except ValueError:
+            return 0
+    
     def format_date_for_display(self, date_str: str) -> str:
         """Convert YYYY-MM-DD format to MM-DD-YYYY for display in reports"""
         try:
@@ -1819,6 +1828,8 @@ class ModernTravelCalendar:
                     return record['start_date']
                 elif self.sort_column == 'End':
                     return record['end_date']
+                elif self.sort_column == 'Days':
+                    return self.calculate_trip_days(record['start_date'], record['end_date'])
                 elif self.sort_column == 'Location':
                     return record['location'].lower()
                 return ''
@@ -1831,6 +1842,9 @@ class ModernTravelCalendar:
         
         # Add filtered records to tree
         for record in filtered_records:
+            # Calculate days for the trip
+            days = self.calculate_trip_days(record['start_date'], record['end_date'])
+            
             # Truncate comment if it's too long for display
             comment = record.get('comment', '')
             if len(comment) > 50:
@@ -1842,6 +1856,7 @@ class ModernTravelCalendar:
             records_tree.insert('', tk.END, values=(
                 self.format_date_for_display(record['start_date']),
                 self.format_date_for_display(record['end_date']),
+                str(days),
                 record['location'],
                 comment
             ), tags=(color_tag,))
@@ -1858,6 +1873,9 @@ class ModernTravelCalendar:
         # Add records sorted by start date (oldest first)
         sorted_records = sorted(self.travel_records, key=lambda x: x['start_date'], reverse=False)
         for record in sorted_records:
+            # Calculate days for the trip
+            days = self.calculate_trip_days(record['start_date'], record['end_date'])
+            
             # Truncate comment if it's too long for display
             comment = record.get('comment', '')
             if len(comment) > 50:
@@ -1869,6 +1887,7 @@ class ModernTravelCalendar:
             records_tree.insert('', tk.END, values=(
                 self.format_date_for_display(record['start_date']),
                 self.format_date_for_display(record['end_date']),
+                str(days),
                 record['location'],
                 comment
             ), tags=(color_tag,))
@@ -1889,8 +1908,9 @@ class ModernTravelCalendar:
         # Find the actual record index
         start_date_display = values[0]
         end_date_display = values[1]
-        location_str = values[2]
-        comment_display = values[3]
+        days_display = values[2]  # New: days column
+        location_str = values[3]  # Updated index
+        comment_display = values[4]  # Updated index
         
         # Convert display dates back to storage format for matching
         start_date_storage = self.parse_display_date_to_storage(start_date_display)
@@ -1981,6 +2001,7 @@ class ModernTravelCalendar:
             # Convert display dates back to storage format for matching
             start_date_storage = self.parse_display_date_to_storage(values[0])
             end_date_storage = self.parse_display_date_to_storage(values[1])
+            # Note: values[2] is days column, values[3] is location, values[4] is comment
             
             # Find and remove the record
             for i, record in enumerate(self.travel_records):
@@ -1989,8 +2010,8 @@ class ModernTravelCalendar:
                 
                 if (record['start_date'] == start_date_storage and 
                     record['end_date'] == end_date_storage and 
-                    record['location'] == values[2] and
-                    display_comment == values[3]):
+                    record['location'] == values[3] and
+                    display_comment == values[4]):
                     del self.travel_records[i]
                     break
             
@@ -2048,6 +2069,9 @@ class ModernTravelCalendar:
         
         # Add sorted records
         for record in sorted_records:
+            # Calculate days for the trip
+            days = self.calculate_trip_days(record['start_date'], record['end_date'])
+            
             # Truncate comment if it's too long for display
             comment = record.get('comment', '')
             if len(comment) > 50:
@@ -2059,6 +2083,7 @@ class ModernTravelCalendar:
             records_tree.insert('', tk.END, values=(
                 self.format_date_for_display(record['start_date']),
                 self.format_date_for_display(record['end_date']),
+                str(days),
                 record['location'],
                 comment
             ), tags=(color_tag,))
@@ -2068,6 +2093,7 @@ class ModernTravelCalendar:
         # Reset all headers first
         records_tree.heading('Start', text='Start Date', anchor='w')
         records_tree.heading('End', text='End Date', anchor='w')
+        records_tree.heading('Days', text='Days', anchor='w')
         records_tree.heading('Location', text='Location', anchor='w')
         records_tree.heading('Comment', text='Notes', anchor='w')
         
@@ -2078,6 +2104,8 @@ class ModernTravelCalendar:
                 records_tree.heading('Start', text=f'Start Date{arrow}', anchor='w')
             elif sorted_column == 'End':
                 records_tree.heading('End', text=f'End Date{arrow}', anchor='w')
+            elif sorted_column == 'Days':
+                records_tree.heading('Days', text=f'Days{arrow}', anchor='w')
             elif sorted_column == 'Location':
                 records_tree.heading('Location', text=f'Location{arrow}', anchor='w')
     
@@ -2140,6 +2168,7 @@ class ModernTravelCalendar:
         self._stats_labels['total_days'].config(text=str(stats['total_days']))
         self._stats_labels['percentage'].config(text=f"{stats['percentage']:.1f}%")
         self._stats_labels['locations'].config(text=str(stats['locations_count']))
+    
     def show_report(self):
         """Show modern travel report in a new window"""
         if not self.travel_records:
@@ -2163,7 +2192,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("785x800")
+        report_window.geometry("860x800")  # Increased width to accommodate Days column
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
@@ -2446,7 +2475,7 @@ class ModernTravelCalendar:
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
         
-        records_tree = ttk.Treeview(tree_frame, columns=('Start', 'End', 'Location', 'Comment'), 
+        records_tree = ttk.Treeview(tree_frame, columns=('Start', 'End', 'Days', 'Location', 'Comment'), 
                                    show='headings', height=15)
         
         # Configure headers with sorting functionality
@@ -2454,14 +2483,17 @@ class ModernTravelCalendar:
                            command=lambda: self.sort_records(records_tree, 'Start'))
         records_tree.heading('End', text='End Date', anchor='w',
                            command=lambda: self.sort_records(records_tree, 'End'))
+        records_tree.heading('Days', text='Days', anchor='w',
+                           command=lambda: self.sort_records(records_tree, 'Days'))
         records_tree.heading('Location', text='Location', anchor='w',
                            command=lambda: self.sort_records(records_tree, 'Location'))
         records_tree.heading('Comment', text='Notes', anchor='w')
         
-        # Set column widths
-        records_tree.column('Start', width=120)
-        records_tree.column('End', width=120)
-        records_tree.column('Location', width=200)
+        # Set column widths (adjusted for the new Days column)
+        records_tree.column('Start', width=100)
+        records_tree.column('End', width=100)
+        records_tree.column('Days', width=60)
+        records_tree.column('Location', width=180)
         records_tree.column('Comment', width=400)
         
         scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=records_tree.yview)
