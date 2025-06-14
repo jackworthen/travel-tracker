@@ -18,6 +18,9 @@ class ModernTravelCalendar:
         self.root.title("Travel Tracker")
         self.root.geometry("1000x720")
 
+        # Set calendar to start with Sunday
+        calendar.setfirstweekday(6)  # Sunday = 6
+
         # Modern color scheme
         self.colors = {
             'primary': '#2563eb',      # Modern blue
@@ -1378,8 +1381,8 @@ class ModernTravelCalendar:
         month_name = calendar.month_name[self.current_month]
         self.month_label.config(text=f"{month_name} {self.current_year}")
         
-        # Day headers
-        days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        # Day headers - Updated to start with Sunday
+        days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         for i, day in enumerate(days):
             label = tk.Label(self.calendar_frame_inner, text=day, 
                            font=('Segoe UI', 10, 'bold'),
