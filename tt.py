@@ -723,6 +723,7 @@ class ModernTravelCalendar:
         
         # Get export settings
         delimiter = self.validation_settings['export_delimiter']
+        delimiter_char = '|' if delimiter == '|' else ','
         
         # Prepare default filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -746,7 +747,10 @@ class ModernTravelCalendar:
         try:
             # Write CSV file
             with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL)
+                if delimiter_char == ',':
+                    writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                else:
+                    writer = csv.writer(csvfile, delimiter='|', quoting=csv.QUOTE_MINIMAL)
                 
                 # Write header
                 writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
@@ -1239,17 +1243,13 @@ class ModernTravelCalendar:
         
         settings_vars['export_delimiter'] = tk.StringVar(value=self.validation_settings['export_delimiter'])
         delimiter_combo = ttk.Combobox(delimiter_frame, textvariable=settings_vars['export_delimiter'],
-                                      values=["Comma ( , )", "Tab ( \\t )", "Semicolon ( ; )", "Pipe ( | )"],
-                                      state="readonly", width=18, font=('Segoe UI', 10))
+                                      values=["Comma ( , )", "Pipe ( | )"],
+                                      state="readonly", width=15, font=('Segoe UI', 10))
         
         # Set the display value based on the stored delimiter
         if self.validation_settings['export_delimiter'] == ',':
             delimiter_combo.set("Comma ( , )")
-        elif self.validation_settings['export_delimiter'] == '\t':
-            delimiter_combo.set("Tab ( \\t )")
-        elif self.validation_settings['export_delimiter'] == ';':
-            delimiter_combo.set("Semicolon ( ; )")
-        else:  # pipe
+        else:
             delimiter_combo.set("Pipe ( | )")
         
         delimiter_combo.pack(side=tk.LEFT, padx=(10, 0))
@@ -1314,13 +1314,9 @@ class ModernTravelCalendar:
                 
                 # Update export settings
                 delimiter_choice = settings_vars['export_delimiter'].get()
-                if delimiter_choice == "Tab ( \\t )":
-                    self.validation_settings['export_delimiter'] = '\t'
-                elif delimiter_choice == "Semicolon ( ; )":
-                    self.validation_settings['export_delimiter'] = ';'
-                elif delimiter_choice == "Pipe ( | )":
+                if delimiter_choice == "Pipe ( | )":
                     self.validation_settings['export_delimiter'] = '|'
-                else:  # Default to comma
+                else:
                     self.validation_settings['export_delimiter'] = ','
                 
                 self.validation_settings['export_directory'] = settings_vars['export_directory'].get()
