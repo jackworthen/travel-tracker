@@ -1742,8 +1742,8 @@ class ModernTravelCalendar:
             all_trips_text = "\n".join(trips_text_parts)
             self.trips_for_month_label.config(text=all_trips_text)
         else:
-            month_name = calendar.month_name[self.current_month]
-            self.trips_for_month_label.config(text=f"📍 No trips in {month_name} {self.current_year}")
+            # CHANGE: Instead of showing "No trips in [month]", set text to empty
+            self.trips_for_month_label.config(text="")
     
     def get_travel_days_for_month(self, year: int, month: int) -> int:
         """Calculate total travel days for a specific month and year"""
