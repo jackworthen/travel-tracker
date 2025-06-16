@@ -2838,7 +2838,7 @@ class ModernTravelCalendar:
         if self.report_window:
             self.report_window.destroy()
             self.report_window = None
-            
+                       
         # Clear stored references
         if hasattr(self, '_current_year_combo'):
             delattr(self, '_current_year_combo')
