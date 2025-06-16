@@ -1529,7 +1529,7 @@ class ModernTravelCalendar:
         self.calendar_frame_inner = tk.Frame(calendar_container, bg=self.colors['surface'])
         self.calendar_frame_inner.pack(expand=True)
         
-        # Travel days counter (between calendar and upcoming trip)
+        # Travel days counter (between calendar and trips for month)
         travel_days_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
         travel_days_frame.pack(fill=tk.X, pady=(15, 10))
         
@@ -1539,17 +1539,17 @@ class ModernTravelCalendar:
                                          bg=self.colors['surface'])
         self.travel_days_label.pack()
         
-        # Upcoming trip info (between travel days and legend)
-        upcoming_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
-        upcoming_frame.pack(fill=tk.X, pady=(0, 10))
+        # Trips for month info (between travel days and legend)
+        trips_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        trips_frame.pack(fill=tk.X, pady=(0, 10))
         
-        self.upcoming_trip_label = tk.Label(upcoming_frame, 
-                                           font=('Segoe UI', 11, 'bold'),
-                                           fg=self.colors['success'],
-                                           bg=self.colors['surface'],
-                                           wraplength=450,  # Wrap text to fit calendar width
-                                           justify=tk.LEFT)
-        self.upcoming_trip_label.pack()
+        self.trips_for_month_label = tk.Label(trips_frame, 
+                                             font=('Segoe UI', 11, 'bold'),
+                                             fg=self.colors['success'],
+                                             bg=self.colors['surface'],
+                                             wraplength=450,  # Wrap text to fit calendar width
+                                             justify=tk.LEFT)
+        self.trips_for_month_label.pack()
         
         # Legend
         legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
@@ -1576,25 +1576,33 @@ class ModernTravelCalendar:
                                   relief='solid', bd=1)
             legend_item.pack(side=tk.LEFT, padx=(10, 0))
     
-    def get_next_upcoming_trip(self):
-        """Get the next upcoming trip (future trip with earliest start date)"""
-        current_date = datetime.now()
-        upcoming_trips = []
+    def get_trips_for_month(self, year: int, month: int) -> List[Dict]:
+        """Get travel records that occur within the specified month and year"""
+        month_trips = []
+        
+        # Get the first and last day of the month
+        month_start = datetime(year, month, 1)
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = datetime(year, month + 1, 1) - timedelta(days=1)
         
         for record in self.travel_records:
             try:
-                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
-                if start_date > current_date:
-                    upcoming_trips.append((start_date, record))
+                trip_start = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                trip_end = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Check if trip overlaps with the month
+                if trip_start <= month_end and trip_end >= month_start:
+                    month_trips.append(record)
+                    
             except ValueError:
+                # Skip records with invalid dates
                 continue
         
-        if not upcoming_trips:
-            return None
-        
-        # Sort by start date and return the earliest
-        upcoming_trips.sort(key=lambda x: x[0])
-        return upcoming_trips[0][1]  # Return the record
+        # Sort trips by start date
+        month_trips.sort(key=lambda x: x['start_date'])
+        return month_trips
     
     def load_data(self) -> List[Dict]:
         """Load travel data from JSON file"""
@@ -1712,24 +1720,30 @@ class ModernTravelCalendar:
         
         self.travel_days_label.config(text=f"✈️ {days_text}")
         
-        # Update upcoming trip info
-        upcoming_trip = self.get_next_upcoming_trip()
-        if upcoming_trip:
-            location = upcoming_trip['location']
-            notes = upcoming_trip.get('comment', '').strip()
+        # Update trips for month info
+        month_trips = self.get_trips_for_month(self.current_year, self.current_month)
+        if month_trips:
+            trips_text_parts = []
+            for trip in month_trips:
+                location = trip['location']
+                notes = trip.get('comment', '').strip()
+                
+                if notes:
+                    # If notes are too long, truncate them
+                    if len(notes) > 50:
+                        notes = notes[:47] + "..."
+                    trip_text = f"📍 {location} - {notes}"
+                else:
+                    trip_text = f"📍 {location}"
+                
+                trips_text_parts.append(trip_text)
             
-            # Create upcoming trip text
-            if notes:
-                # If notes are too long, truncate them
-                if len(notes) > 100:
-                    notes = notes[:97] + "..."
-                upcoming_text = f"🎯 Upcoming: {location} - {notes}"
-            else:
-                upcoming_text = f"🎯 Upcoming: {location}"
-            
-            self.upcoming_trip_label.config(text=upcoming_text)
+            # Combine all trips with line breaks
+            all_trips_text = "\n".join(trips_text_parts)
+            self.trips_for_month_label.config(text=all_trips_text)
         else:
-            self.upcoming_trip_label.config(text="🎯 No upcoming trips scheduled")
+            month_name = calendar.month_name[self.current_month]
+            self.trips_for_month_label.config(text=f"📍 No trips in {month_name} {self.current_year}")
     
     def get_travel_days_for_month(self, year: int, month: int) -> int:
         """Calculate total travel days for a specific month and year"""
