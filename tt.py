@@ -2564,7 +2564,7 @@ class ModernTravelCalendar:
                 bg=self.colors['accent'], fg='white').pack()
         
         # Filter section
-        filter_frame = ttk.LabelFrame(main_container, text="🔍 Record Filter", style='Card.TLabelframe')
+        filter_frame = ttk.LabelFrame(main_container, text="☰ Record Filter", style='Card.TLabelframe')
         filter_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         
         filter_inner = tk.Frame(filter_frame, bg=self.colors['surface'])
