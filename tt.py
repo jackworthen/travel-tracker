@@ -2821,7 +2821,7 @@ class ModernTravelCalendar:
         
         # Bind year selection change
         def on_year_change(event):
-            # Check if selected year is in the past and automatically enable Past toggle
+            # Check if selected year is in the past/future and automatically enable appropriate toggle
             selected_year_str = year_var.get()
             current_year = datetime.now().year
             
@@ -2832,6 +2832,11 @@ class ModernTravelCalendar:
                         # Automatically enable Past toggle for previous years
                         if not filter_vars['past'].get():
                             filter_vars['past'].set(True)
+                            update_button_appearance()
+                    elif selected_year > current_year:
+                        # Automatically enable Future toggle for future years
+                        if not filter_vars['future'].get():
+                            filter_vars['future'].set(True)
                             update_button_appearance()
                 except ValueError:
                     pass
