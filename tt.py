@@ -1890,7 +1890,7 @@ class ModernTravelCalendar:
         else:
             all_errors.append("Please select or enter a start date")
         
-        # Validate end date
+        # Validate end date - FIXED: Now requires end date instead of defaulting to start date
         if end_date_str:
             is_valid, parsed_date, error_msg = self.validate_date_format(end_date_str)
             if is_valid:
@@ -1900,7 +1900,7 @@ class ModernTravelCalendar:
         elif self.selected_end_date:
             end_date = self.selected_end_date
         else:
-            end_date = start_date  # Single day trip
+            all_errors.append("Please select or enter a return date")
         
         # Validate date range if both dates are valid
         if start_date and end_date:
