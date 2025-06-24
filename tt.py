@@ -3149,7 +3149,7 @@ class ModernTravelCalendar:
         
         # Create analytics window
         analytics_window = tk.Toplevel(self.root)
-        analytics_window.title("📊 Travel Analytics Dashboard")
+        analytics_window.title("📊 Travel Analytics")
         analytics_window.geometry("800x780")  # Reduced from 1200x800
         analytics_window.configure(bg=self.colors['background'])
         
@@ -3159,7 +3159,7 @@ class ModernTravelCalendar:
         
         # Title
         title_label = tk.Label(main_container, 
-                              text="📊 Comprehensive Travel Analytics", 
+                              text="📊 Travel Analytics Dashboard", 
                               font=('Segoe UI', 16, 'bold'),  # Reduced from 18
                               fg=self.colors['primary'],
                               bg=self.colors['background'])
