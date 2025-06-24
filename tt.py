@@ -1056,7 +1056,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x475") 
+        dialog.geometry("400x475")  # Increased height for new Year filter setting
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -2922,6 +2922,14 @@ class ModernTravelCalendar:
                               command=self.export_travel_records)
         export_btn.pack(side=tk.LEFT, padx=(0, 10))
         
+        analytics_btn = tk.Button(buttons_frame, text="📊 Analytics Dashboard",
+                                 bg='#8b5cf6', fg='white',  # Purple color
+                                 font=('Segoe UI', 10, 'bold'),
+                                 relief='flat', bd=0, padx=12, pady=8,
+                                 activebackground='#7c3aed', activeforeground='white',
+                                 command=self.show_analytics_dashboard)
+        analytics_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
         close_btn = tk.Button(buttons_frame, text="✖️ Close",
                              bg=self.colors['secondary'], fg='white',
                              font=('Segoe UI', 10, 'bold'),
@@ -2929,6 +2937,622 @@ class ModernTravelCalendar:
                              activebackground='#475569', activeforeground='white',
                              command=self._on_report_window_close)
         close_btn.pack(side=tk.LEFT)
+
+    def get_available_past_years(self):
+        """Get list of years with past travel data"""
+        current_year = datetime.now().year
+        years = set()
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Include years for trips that have started (past or current)
+                if start_date <= datetime.now():
+                    years.add(start_date.year)
+                    years.add(end_date.year)
+                    # Add any years in between for multi-year trips
+                    for year in range(start_date.year, min(end_date.year, current_year) + 1):
+                        years.add(year)
+            except ValueError:
+                continue
+        
+        # Only include years up to current year
+        past_years = [year for year in years if year <= current_year]
+        return sorted(past_years, reverse=True)  # Most recent first
+    
+    def get_available_future_years(self):
+        """Get list of years with future travel data"""
+        current_year = datetime.now().year
+        years = set()
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Include years for trips that start in the future or overlap with future
+                if end_date >= datetime.now():
+                    years.add(start_date.year)
+                    years.add(end_date.year)
+                    # Add any years in between for multi-year trips
+                    for year in range(max(start_date.year, current_year), end_date.year + 1):
+                        years.add(year)
+            except ValueError:
+                continue
+        
+        # Only include years from current year forward
+        future_years = [year for year in years if year >= current_year]
+        return sorted(future_years)  # Earliest first
+    
+    def calculate_year_specific_analytics(self, selected_past_year, selected_future_year):
+        """Calculate analytics for specific years"""
+        current_date = datetime.now()
+        current_year = current_date.year
+        
+        # Initialize data structures
+        analytics = {
+            'past': {
+                'trips': 0,
+                'days': 0,
+                'locations': set(),
+                'weekend_days': 0,
+                'trip_lengths': [],
+                'months': {},
+                'selected_year': selected_past_year
+            },
+            'future': {
+                'trips': 0,
+                'days': 0,
+                'locations': set(),
+                'weekend_days': 0,
+                'trip_lengths': [],
+                'months': {},
+                'selected_year': selected_future_year
+            },
+            'overall': {
+                'total_records': len(self.travel_records),
+                'earliest_trip': None,
+                'latest_trip': None,
+                'most_visited_location': '',
+                'location_counts': {}
+            }
+        }
+        
+        # Calculate year boundaries
+        past_year_start = datetime(selected_past_year, 1, 1)
+        past_year_end = datetime(selected_past_year, 12, 31)
+        future_year_start = datetime(selected_future_year, 1, 1)
+        future_year_end = datetime(selected_future_year, 12, 31)
+        
+        # Determine how much of the selected past year has elapsed
+        if selected_past_year == current_year:
+            days_elapsed_in_past_year = (current_date - past_year_start).days + 1
+        else:
+            days_elapsed_in_past_year = 365 + (1 if selected_past_year % 4 == 0 and (selected_past_year % 100 != 0 or selected_past_year % 400 == 0) else 0)
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                trip_length = (end_date - start_date).days + 1
+                location = record['location']
+                
+                # Update overall statistics (unchanged)
+                if analytics['overall']['earliest_trip'] is None or start_date < analytics['overall']['earliest_trip']:
+                    analytics['overall']['earliest_trip'] = start_date
+                if analytics['overall']['latest_trip'] is None or end_date > analytics['overall']['latest_trip']:
+                    analytics['overall']['latest_trip'] = end_date
+                
+                analytics['overall']['location_counts'][location] = analytics['overall']['location_counts'].get(location, 0) + 1
+                
+                # Calculate travel days per year for most traveled year
+                if 'year_travel_days' not in analytics['overall']:
+                    analytics['overall']['year_travel_days'] = {}
+                
+                # Count days for each year the trip overlaps
+                for year in range(start_date.year, end_date.year + 1):
+                    year_start_date = datetime(year, 1, 1)
+                    year_end_date = datetime(year, 12, 31)
+                    
+                    # Calculate overlap with this year
+                    overlap_start = max(start_date, year_start_date)
+                    overlap_end = min(end_date, year_end_date)
+                    
+                    if overlap_start <= overlap_end:
+                        days_in_year = (overlap_end - overlap_start).days + 1
+                        analytics['overall']['year_travel_days'][year] = analytics['overall']['year_travel_days'].get(year, 0) + days_in_year
+                
+                # Check if trip overlaps with selected past year and has started
+                past_year_overlap = (start_date <= past_year_end and end_date >= past_year_start and start_date <= current_date)
+                
+                # Check if trip overlaps with selected future year and hasn't ended yet
+                future_year_overlap = (start_date <= future_year_end and end_date >= future_year_start and end_date >= current_date)
+                
+                if past_year_overlap:
+                    analytics['past']['trips'] += 1
+                    analytics['past']['locations'].add(location)
+                    analytics['past']['trip_lengths'].append(trip_length)
+                    
+                    # Calculate days within the selected past year that have elapsed
+                    overlap_start = max(start_date, past_year_start)
+                    overlap_end = min(end_date, past_year_end, current_date)
+                    
+                    if overlap_start <= overlap_end:
+                        days_in_past_year = (overlap_end - overlap_start).days + 1
+                        analytics['past']['days'] += days_in_past_year
+                        
+                        # Count weekend days
+                        current_day = overlap_start
+                        while current_day <= overlap_end:
+                            if current_day.weekday() in [5, 6]:
+                                analytics['past']['weekend_days'] += 1
+                            current_day += timedelta(days=1)
+                    
+                    # Count months
+                    month_name = start_date.strftime('%B')
+                    analytics['past']['months'][month_name] = analytics['past']['months'].get(month_name, 0) + 1
+                
+                if future_year_overlap:
+                    analytics['future']['trips'] += 1
+                    analytics['future']['locations'].add(location)
+                    analytics['future']['trip_lengths'].append(trip_length)
+                    
+                    # Calculate days within the selected future year
+                    overlap_start = max(start_date, future_year_start)
+                    overlap_end = min(end_date, future_year_end)
+                    
+                    if overlap_start <= overlap_end:
+                        days_in_future_year = (overlap_end - overlap_start).days + 1
+                        analytics['future']['days'] += days_in_future_year
+                        
+                        # Count weekend days
+                        current_day = overlap_start
+                        while current_day <= overlap_end:
+                            if current_day.weekday() in [5, 6]:
+                                analytics['future']['weekend_days'] += 1
+                            current_day += timedelta(days=1)
+                    
+                    # Count months
+                    month_name = start_date.strftime('%B')
+                    analytics['future']['months'][month_name] = analytics['future']['months'].get(month_name, 0) + 1
+                    
+            except ValueError:
+                continue
+        
+        # Calculate derived statistics
+        for category in ['past', 'future']:
+            cat_data = analytics[category]
+            cat_data['locations_count'] = len(cat_data['locations'])
+            cat_data['avg_trip_length'] = sum(cat_data['trip_lengths']) / len(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+            cat_data['longest_trip'] = max(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+            cat_data['shortest_trip'] = min(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+        
+        # Calculate percentage for past year
+        analytics['past']['percentage_of_year'] = (analytics['past']['days'] / days_elapsed_in_past_year) * 100 if days_elapsed_in_past_year > 0 else 0
+        
+        # Most visited location (overall)
+        if analytics['overall']['location_counts']:
+            analytics['overall']['most_visited_location'] = max(
+                analytics['overall']['location_counts'].items(), 
+                key=lambda x: x[1]
+            )[0]
+        
+        # Most traveled year
+        if analytics['overall'].get('year_travel_days'):
+            analytics['overall']['most_traveled_year'] = max(
+                analytics['overall']['year_travel_days'].items(),
+                key=lambda x: x[1]
+            )[0]
+        else:
+            analytics['overall']['most_traveled_year'] = current_year
+        
+        return analytics
+        """Calculate comprehensive travel analytics broken down by past and future"""
+        current_date = datetime.now()
+        current_year = current_date.year
+        year_start = datetime(current_year, 1, 1)
+        days_in_year_so_far = (current_date - year_start).days + 1
+        
+        # Initialize data structures
+        analytics = {
+            'past': {
+                'trips': 0,
+                'days': 0,
+                'locations': set(),
+                'weekend_days': 0,
+                'trip_lengths': [],
+                'months': {}
+            },
+            'future': {
+                'trips': 0,
+                'days': 0,
+                'locations': set(),
+                'weekend_days': 0,
+                'trip_lengths': [],
+                'months': {}
+            },
+            'overall': {
+                'total_records': len(self.travel_records),
+                'earliest_trip': None,
+                'latest_trip': None,
+                'most_visited_location': '',
+                'location_counts': {}
+            }
+        }
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                trip_length = (end_date - start_date).days + 1
+                location = record['location']
+                
+                # Update overall statistics
+                if analytics['overall']['earliest_trip'] is None or start_date < analytics['overall']['earliest_trip']:
+                    analytics['overall']['earliest_trip'] = start_date
+                if analytics['overall']['latest_trip'] is None or end_date > analytics['overall']['latest_trip']:
+                    analytics['overall']['latest_trip'] = end_date
+                
+                # Count location visits
+                analytics['overall']['location_counts'][location] = analytics['overall']['location_counts'].get(location, 0) + 1
+                
+                # Calculate travel days per year for most traveled year
+                if 'year_travel_days' not in analytics['overall']:
+                    analytics['overall']['year_travel_days'] = {}
+                
+                # Count days for each year the trip overlaps
+                for year in range(start_date.year, end_date.year + 1):
+                    year_start = datetime(year, 1, 1)
+                    year_end = datetime(year, 12, 31)
+                    
+                    # Calculate overlap with this year
+                    overlap_start = max(start_date, year_start)
+                    overlap_end = min(end_date, year_end)
+                    
+                    if overlap_start <= overlap_end:
+                        days_in_year = (overlap_end - overlap_start).days + 1
+                        analytics['overall']['year_travel_days'][year] = analytics['overall']['year_travel_days'].get(year, 0) + days_in_year
+                
+                # Rest of the existing logic...
+                # Determine trip category (past includes current trips)
+                if start_date > current_date:
+                    category = 'future'
+                else:
+                    category = 'past'  # Includes trips that have started (past and current)
+                
+                # Update category statistics
+                analytics[category]['trips'] += 1
+                analytics[category]['locations'].add(location)
+                analytics[category]['trip_lengths'].append(trip_length)
+                
+                # Count days (for current year only for past trips, all days for future)
+                if category == 'past' and start_date.year <= current_year and end_date.year >= current_year:
+                    count_start = max(start_date, year_start)
+                    count_end = min(end_date, current_date)
+                    if count_start <= count_end:
+                        days = (count_end - count_start).days + 1
+                        analytics[category]['days'] += days
+                        
+                        # Count weekend days
+                        current_day = count_start
+                        while current_day <= count_end:
+                            if current_day.weekday() in [5, 6]:  # Saturday=5, Sunday=6
+                                analytics[category]['weekend_days'] += 1
+                            current_day += timedelta(days=1)
+                elif category == 'future':
+                    # For future trips, count all days
+                    analytics[category]['days'] += trip_length
+                    
+                    # Count weekend days for future trips
+                    current_day = start_date
+                    while current_day <= end_date:
+                        if current_day.weekday() in [5, 6]:  # Saturday=5, Sunday=6
+                            analytics[category]['weekend_days'] += 1
+                        current_day += timedelta(days=1)
+                
+                # Count months for all categories
+                trip_months = set()
+                current_month = start_date.replace(day=1)
+                end_month = end_date.replace(day=1)
+                while current_month <= end_month:
+                    month_name = current_month.strftime('%B')
+                    analytics[category]['months'][month_name] = analytics[category]['months'].get(month_name, 0) + 1
+                    current_month = (current_month + timedelta(days=32)).replace(day=1)
+                    
+            except ValueError:
+                continue
+        
+        # Calculate derived statistics
+        for category in ['past', 'future']:
+            cat_data = analytics[category]
+            cat_data['locations_count'] = len(cat_data['locations'])
+            cat_data['avg_trip_length'] = sum(cat_data['trip_lengths']) / len(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+            cat_data['longest_trip'] = max(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+            cat_data['shortest_trip'] = min(cat_data['trip_lengths']) if cat_data['trip_lengths'] else 0
+            
+            # Only calculate percentage for past trips
+            if category == 'past':
+                cat_data['percentage_of_year'] = (cat_data['days'] / days_in_year_so_far) * 100 if days_in_year_so_far > 0 else 0
+        
+        # Most visited location
+        if analytics['overall']['location_counts']:
+            analytics['overall']['most_visited_location'] = max(
+                analytics['overall']['location_counts'].items(), 
+                key=lambda x: x[1]
+            )[0]
+        
+        # Most traveled year
+        if analytics['overall'].get('year_travel_days'):
+            analytics['overall']['most_traveled_year'] = max(
+                analytics['overall']['year_travel_days'].items(),
+                key=lambda x: x[1]
+            )[0]
+        else:
+            analytics['overall']['most_traveled_year'] = current_year
+        
+        return analytics
+    
+    def show_analytics_dashboard(self):
+        """Show comprehensive analytics dashboard in a new window"""
+        if not self.travel_records:
+            messagebox.showinfo("Analytics", "📊 No travel records found for analytics.")
+            return
+        
+        # Get available years
+        past_years = self.get_available_past_years()
+        future_years = self.get_available_future_years()
+        
+        if not past_years and not future_years:
+            messagebox.showinfo("Analytics", "📊 No travel records found for analytics.")
+            return
+        
+        # Create analytics window
+        analytics_window = tk.Toplevel(self.root)
+        analytics_window.title("📊 Travel Analytics Dashboard")
+        analytics_window.geometry("1000x780")  # Reduced from 1200x800
+        analytics_window.configure(bg=self.colors['background'])
+        
+        # Main container with scrollable content
+        main_container = tk.Frame(analytics_window, bg=self.colors['background'])
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)  # Reduced from 30, 30
+        
+        # Title
+        title_label = tk.Label(main_container, 
+                              text="📊 Comprehensive Travel Analytics", 
+                              font=('Segoe UI', 16, 'bold'),  # Reduced from 18
+                              fg=self.colors['primary'],
+                              bg=self.colors['background'])
+        title_label.pack(pady=(0, 20))  # Reduced from 30
+        
+        # Year selection variables
+        current_year = datetime.now().year
+        past_year_var = tk.StringVar(value=str(current_year) if current_year in past_years else str(past_years[0]) if past_years else str(current_year))
+        future_year_var = tk.StringVar(value=str(current_year) if current_year in future_years else str(future_years[0]) if future_years else str(current_year))
+        
+        # Function to update analytics when year selection changes
+        def update_analytics():
+            try:
+                selected_past_year = int(past_year_var.get())
+                selected_future_year = int(future_year_var.get())
+                analytics = self.calculate_year_specific_analytics(selected_past_year, selected_future_year)
+                
+                # Update the sections
+                self.update_analytics_section(past_section_content, analytics['past'], '#dbeafe', '#1e40af')
+                self.update_analytics_section(future_section_content, analytics['future'], '#fef3c7', '#d97706')
+                
+            except ValueError:
+                pass
+        
+        # Create sections for Past and Future
+        sections_frame = tk.Frame(main_container, bg=self.colors['background'])
+        sections_frame.pack(fill=tk.BOTH, expand=True)
+        sections_frame.columnconfigure(0, weight=1)
+        sections_frame.columnconfigure(1, weight=1)
+        
+        # Past Section with year dropdown
+        past_section_frame = ttk.LabelFrame(sections_frame, text="Past Travel", style='Card.TLabelframe')
+        past_section_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        
+        # Past year selection
+        past_year_frame = tk.Frame(past_section_frame, bg=self.colors['surface'])
+        past_year_frame.pack(fill=tk.X, padx=15, pady=(10, 5))  # Reduced padding
+        
+        tk.Label(past_year_frame, text="Year:", font=('Segoe UI', 10, 'bold'),  # Reduced font
+                fg=self.colors['text'], bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        past_year_combo = ttk.Combobox(past_year_frame, textvariable=past_year_var,
+                                      values=[str(year) for year in past_years] if past_years else [str(current_year)],
+                                      state="readonly", width=8, font=('Segoe UI', 9))  # Reduced font
+        past_year_combo.pack(side=tk.LEFT, padx=(10, 0))
+        past_year_combo.bind('<<ComboboxSelected>>', lambda e: update_analytics())
+        
+        past_section_content = tk.Frame(past_section_frame, bg=self.colors['surface'])
+        past_section_content.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))  # Reduced padding
+        
+        # Future Section with year dropdown
+        future_section_frame = ttk.LabelFrame(sections_frame, text="Future Travel", style='Card.TLabelframe')
+        future_section_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
+        
+        # Future year selection
+        future_year_frame = tk.Frame(future_section_frame, bg=self.colors['surface'])
+        future_year_frame.pack(fill=tk.X, padx=15, pady=(10, 5))  # Reduced padding
+        
+        tk.Label(future_year_frame, text="Year:", font=('Segoe UI', 10, 'bold'),  # Reduced font
+                fg=self.colors['text'], bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        future_year_combo = ttk.Combobox(future_year_frame, textvariable=future_year_var,
+                                        values=[str(year) for year in future_years] if future_years else [str(current_year)],
+                                        state="readonly", width=8, font=('Segoe UI', 9))  # Reduced font
+        future_year_combo.pack(side=tk.LEFT, padx=(10, 0))
+        future_year_combo.bind('<<ComboboxSelected>>', lambda e: update_analytics())
+        
+        future_section_content = tk.Frame(future_section_frame, bg=self.colors['surface'])
+        future_section_content.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))  # Reduced padding
+        
+        # Calculate initial analytics
+        initial_past_year = int(past_year_var.get())
+        initial_future_year = int(future_year_var.get())
+        analytics = self.calculate_year_specific_analytics(initial_past_year, initial_future_year)
+        
+        # Populate initial data
+        self.update_analytics_section(past_section_content, analytics['past'], '#dbeafe', '#1e40af')
+        self.update_analytics_section(future_section_content, analytics['future'], '#fef3c7', '#d97706')
+        
+        # Overall Statistics Section (unchanged)
+        overall_frame = ttk.LabelFrame(main_container, text="🌍 Overall Statistics", style='Card.TLabelframe')
+        overall_frame.pack(fill=tk.X, pady=(20, 0))  # Reduced from 30
+        
+        overall_content = tk.Frame(overall_frame, bg=self.colors['surface'])
+        overall_content.pack(fill=tk.X, padx=15, pady=15)  # Reduced from 20, 20
+        
+        # Overall stats cards
+        overall_stats_frame = tk.Frame(overall_content, bg=self.colors['surface'])
+        overall_stats_frame.pack(fill=tk.X)
+        overall_stats_frame.columnconfigure(0, weight=1)
+        overall_stats_frame.columnconfigure(1, weight=1)
+        overall_stats_frame.columnconfigure(2, weight=1)
+        overall_stats_frame.columnconfigure(3, weight=1)
+        
+        # Total Records
+        total_card = tk.Frame(overall_stats_frame, bg='#6366f1', relief='solid', bd=0, padx=16, pady=12)
+        total_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        tk.Label(total_card, text="📋", font=('Segoe UI', 16), 
+                bg='#6366f1', fg='white').pack()
+        tk.Label(total_card, text=str(analytics['overall']['total_records']), 
+                font=('Segoe UI', 20, 'bold'), bg='#6366f1', fg='white').pack()
+        tk.Label(total_card, text="Total Records", font=('Segoe UI', 9),
+                bg='#6366f1', fg='white').pack()
+        
+        # Most Traveled Year
+        year_card = tk.Frame(overall_stats_frame, bg='#ec4899', relief='solid', bd=0, padx=16, pady=12)
+        year_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        
+        tk.Label(year_card, text="🏆", font=('Segoe UI', 16), 
+                bg='#ec4899', fg='white').pack()
+        tk.Label(year_card, text=str(analytics['overall']['most_traveled_year']), 
+                font=('Segoe UI', 20, 'bold'), bg='#ec4899', fg='white').pack()
+        tk.Label(year_card, text="Most Traveled Year", font=('Segoe UI', 9),
+                bg='#ec4899', fg='white').pack()
+        
+        # Travel Span
+        span_card = tk.Frame(overall_stats_frame, bg='#10b981', relief='solid', bd=0, padx=16, pady=12)
+        span_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=5)
+        
+        tk.Label(span_card, text="📅", font=('Segoe UI', 16), 
+                bg='#10b981', fg='white').pack()
+        
+        if analytics['overall']['earliest_trip'] and analytics['overall']['latest_trip']:
+            span_years = analytics['overall']['latest_trip'].year - analytics['overall']['earliest_trip'].year + 1
+            tk.Label(span_card, text=f"{span_years}", 
+                    font=('Segoe UI', 20, 'bold'), bg='#10b981', fg='white').pack()
+            tk.Label(span_card, text="Years of Travel", font=('Segoe UI', 9),
+                    bg='#10b981', fg='white').pack()
+        else:
+            tk.Label(span_card, text="0", 
+                    font=('Segoe UI', 20, 'bold'), bg='#10b981', fg='white').pack()
+            tk.Label(span_card, text="Years of Travel", font=('Segoe UI', 9),
+                    bg='#10b981', fg='white').pack()
+        
+        # Unique Locations
+        unique_card = tk.Frame(overall_stats_frame, bg='#f59e0b', relief='solid', bd=0, padx=16, pady=12)
+        unique_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=(5, 0))
+        
+        tk.Label(unique_card, text="🌟", font=('Segoe UI', 16), 
+                bg='#f59e0b', fg='white').pack()
+        all_locations = set()
+        for category in ['past', 'future']:
+            all_locations.update(analytics[category]['locations'])
+        tk.Label(unique_card, text=str(len(all_locations)), 
+                font=('Segoe UI', 20, 'bold'), bg='#f59e0b', fg='white').pack()
+        tk.Label(unique_card, text="Unique Locations", font=('Segoe UI', 9),
+                bg='#f59e0b', fg='white').pack()
+        
+        # Close button
+        close_frame = tk.Frame(main_container, bg=self.colors['background'])
+        close_frame.pack(pady=(20, 0))  # Reduced from 30
+        
+        close_btn = tk.Button(close_frame, text="✖️ Close Dashboard",
+                             bg=self.colors['secondary'], fg='white',
+                             font=('Segoe UI', 11, 'bold'),  # Reduced from 12
+                             relief='flat', bd=0, padx=25, pady=10,  # Reduced padding
+                             activebackground='#475569', activeforeground='white',
+                             command=analytics_window.destroy)
+        close_btn.pack()
+    
+    def update_analytics_section(self, content_frame, data, bg_color, text_color):
+        """Update an analytics section with new data using compact grid layout"""
+        # Clear existing content
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        
+        # Metrics cards in a 2x3 grid for more compact display
+        metrics = [
+            ("🚀", "Trips", data['trips']),
+            ("📅", "Days", data['days']),
+            ("🌍", "Locations", data['locations_count']),
+            ("🎯", "Avg Length", f"{data['avg_trip_length']:.1f}" if data['avg_trip_length'] > 0 else "0"),
+            ("⏰", "Weekend Days", data['weekend_days']),
+        ]
+        
+        # Add percentage for past only
+        if data.get('percentage_of_year', 0) > 0:
+            metrics.append(("📊", f"% of {data['selected_year']}", f"{data['percentage_of_year']:.1f}%"))
+        
+        # Create grid container
+        metrics_grid = tk.Frame(content_frame, bg=self.colors['surface'])
+        metrics_grid.pack(fill=tk.X, pady=(0, 10))
+        
+        # Configure grid columns to be equal width
+        metrics_grid.columnconfigure(0, weight=1)
+        metrics_grid.columnconfigure(1, weight=1)
+        
+        # Place metrics in 2-column grid
+        for i, (icon, label, value) in enumerate(metrics):
+            row = i // 2
+            col = i % 2
+            
+            metric_card = tk.Frame(metrics_grid, bg=bg_color, relief='solid', bd=0, padx=8, pady=6)  # Reduced padding
+            metric_card.grid(row=row, column=col, sticky=(tk.W, tk.E), padx=2, pady=2)
+            
+            # Icon and value on same line
+            info_frame = tk.Frame(metric_card, bg=bg_color)
+            info_frame.pack(fill=tk.X)
+            
+            tk.Label(info_frame, text=icon, font=('Segoe UI', 12), 
+                    bg=bg_color, fg=text_color).pack(side=tk.LEFT)
+            
+            tk.Label(info_frame, text=str(value), font=('Segoe UI', 12, 'bold'), 
+                    bg=bg_color, fg=text_color).pack(side=tk.RIGHT)
+            
+            tk.Label(metric_card, text=label, font=('Segoe UI', 9),  # Reduced font
+                    bg=bg_color, fg=text_color).pack()
+        
+        # Trip extremes (if any trips exist) - more compact
+        if data['trip_lengths']:
+            extremes_frame = tk.Frame(content_frame, bg=self.colors['surface'])
+            extremes_frame.pack(fill=tk.X, pady=(5, 0))  # Reduced padding
+            
+            tk.Label(extremes_frame, text="Trip Extremes", font=('Segoe UI', 10, 'bold'),  # Reduced font
+                    fg=self.colors['text'], bg=self.colors['surface']).pack()
+            
+            # Put extremes in a horizontal layout to save space
+            extremes_grid = tk.Frame(extremes_frame, bg=self.colors['surface'])
+            extremes_grid.pack(fill=tk.X, pady=(2, 0))
+            extremes_grid.columnconfigure(0, weight=1)
+            extremes_grid.columnconfigure(1, weight=1)
+            
+            longest_card = tk.Frame(extremes_grid, bg='#a3a3a3', relief='solid', bd=0, padx=6, pady=3)  # Reduced padding
+            longest_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 1))
+            tk.Label(longest_card, text=f"Longest: {data['longest_trip']} days", 
+                    font=('Segoe UI', 8), bg='#a3a3a3', fg='white').pack()  # Reduced font
+            
+            shortest_card = tk.Frame(extremes_grid, bg='#71717a', relief='solid', bd=0, padx=6, pady=3)  # Reduced padding
+            shortest_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(1, 0))
+            tk.Label(shortest_card, text=f"Shortest: {data['shortest_trip']} days", 
+                    font=('Segoe UI', 8), bg='#71717a', fg='white').pack()  # Reduced font
 
     def _on_report_window_close(self):
         """Handle report window close event"""
