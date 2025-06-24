@@ -1035,6 +1035,7 @@ class ModernTravelCalendar:
         # View menu
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Analytics Dashboard", command=self.show_analytics_dashboard, accelerator="(Ctrl+A)")
         view_menu.add_command(label="Travel Report", command=self.show_report, accelerator="(Ctrl+R)")
         view_menu.add_separator()
 
@@ -1048,6 +1049,7 @@ class ModernTravelCalendar:
         # Bind keyboard shortcuts
         self.root.bind('<Control-q>', lambda e: self.exit_application())
         self.root.bind('<Control-r>', lambda e: self.show_report())
+        self.root.bind('<Control-a>', lambda e: self.show_analytics_dashboard())
         self.root.bind('<Control-s>', lambda e: self.show_validation_settings())
         self.root.bind('<Control-o>', lambda e: self.open_data_location())
         self.root.bind('<Control-d>', lambda e: self.open_documentation())
