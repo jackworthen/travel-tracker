@@ -77,6 +77,8 @@ class ModernTravelCalendar:
             'default_show_past': False,
             'default_show_current': True,
             'default_show_future': True,
+            # Year filter default
+            'default_year_filter': 'Current Year',  # Options: 'All Years', 'Current Year'
             # Export settings
             'export_delimiter': ',',  # Default to comma
             'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home())  # Default to Downloads or Home folder
@@ -1054,7 +1056,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x450")  # Reduced height thanks to tabs
+        dialog.geometry("400x475")  # Reduced height thanks to tabs
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1188,7 +1190,27 @@ class ModernTravelCalendar:
         tk.Checkbutton(report_content, text="Future Trips",
                       variable=settings_vars['default_show_future'],
                       bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W)
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
+        
+        # Year filter default setting
+        tk.Label(report_content, text="Set Default Year Filter",
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 10))
+        
+        year_filter_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        year_filter_frame.pack(fill=tk.X)
+        
+        tk.Label(year_filter_frame, text="Default Year:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['default_year_filter'] = tk.StringVar(value=self.validation_settings['default_year_filter'])
+        year_filter_combo = ttk.Combobox(year_filter_frame, textvariable=settings_vars['default_year_filter'],
+                                        values=["All Years", "Current Year"],
+                                        state="readonly", width=15, font=('Segoe UI', 10))
+        year_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
         # ========== INPUT TAB ==========
         input_tab = tk.Frame(notebook, bg=self.colors['surface'])
@@ -1311,6 +1333,9 @@ class ModernTravelCalendar:
                 self.validation_settings['default_show_past'] = settings_vars['default_show_past'].get()
                 self.validation_settings['default_show_current'] = settings_vars['default_show_current'].get()
                 self.validation_settings['default_show_future'] = settings_vars['default_show_future'].get()
+                
+                # Update year filter default
+                self.validation_settings['default_year_filter'] = settings_vars['default_year_filter'].get()
                 
                 # Update export settings
                 delimiter_choice = settings_vars['export_delimiter'].get()
@@ -1625,6 +1650,57 @@ class ModernTravelCalendar:
             messagebox.showerror("Save Error", f"Could not save data: {e}")
     
     def get_available_years(self) -> List[int]:
+        """Get list of years from travel records"""
+        years = set()
+        for record in self.travel_records:
+            try:
+                start_year = datetime.strptime(record['start_date'], '%Y-%m-%d').year
+                end_year = datetime.strptime(record['end_date'], '%Y-%m-%d').year
+                years.add(start_year)
+                years.add(end_year)
+            except:
+                continue
+        return sorted(list(years), reverse=True)  # Most recent years first
+    
+    def get_default_year_selection(self, available_years):
+        """Get the default year selection based on user preference"""
+        current_year = datetime.now().year
+        preference = self.validation_settings['default_year_filter']
+        
+        if preference == "All Years":
+            return "All Years"
+        elif preference == "Current Year":
+            # Use current year if it's in the available years, otherwise fall back to "All Years"
+            if str(current_year) in [str(year) for year in available_years]:
+                return str(current_year)
+            else:
+                return "All Years"
+        else:
+            # Fallback for unknown preference
+            return "All Years"
+        """Get the default year selection based on user preference"""
+        current_year = datetime.now().year
+        preference = self.validation_settings['default_year_filter']
+        
+        if preference == "All Years":
+            return "All Years"
+        elif preference == "Current Year":
+            # Use current year if it's in the available years, otherwise fall back to "All Years"
+            if str(current_year) in [str(year) for year in available_years]:
+                return str(current_year)
+            else:
+                return "All Years"
+        elif preference == "Most Recent Year":
+            # Use the most recent year with travel data, otherwise fall back to current year or "All Years"
+            if available_years:
+                return str(available_years[0])  # available_years is already sorted newest first
+            elif str(current_year) in [str(year) for year in available_years]:
+                return str(current_year)
+            else:
+                return "All Years"
+        else:
+            # Fallback for unknown preference
+            return "All Years"
         """Get list of years from travel records"""
         years = set()
         for record in self.travel_records:
@@ -2732,11 +2808,9 @@ class ModernTravelCalendar:
         year_options = ["All Years"] + [str(year) for year in available_years]
         year_combo['values'] = year_options
         
-        # Set default to current year if available, otherwise "All Years"
-        if str(current_year) in year_options:
-            year_var.set(str(current_year))
-        else:
-            year_var.set("All Years")
+        # Set default based on user preference
+        default_year = self.get_default_year_selection(available_years)
+        year_var.set(default_year)
         
         year_combo.pack(side=tk.LEFT)
         
