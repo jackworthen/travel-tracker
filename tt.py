@@ -3311,7 +3311,7 @@ class ModernTravelCalendar:
         # Create analytics window
         analytics_window = tk.Toplevel(self.root)
         analytics_window.title("📊 Travel Analytics Dashboard")
-        analytics_window.geometry("1000x780")  # Reduced from 1200x800
+        analytics_window.geometry("800x780")  # Reduced from 1200x800
         analytics_window.configure(bg=self.colors['background'])
         
         # Main container with scrollable content
@@ -3423,7 +3423,7 @@ class ModernTravelCalendar:
                 bg='#6366f1', fg='white').pack()
         tk.Label(total_card, text=str(analytics['overall']['total_records']), 
                 font=('Segoe UI', 20, 'bold'), bg='#6366f1', fg='white').pack()
-        tk.Label(total_card, text="Total Records", font=('Segoe UI', 9),
+        tk.Label(total_card, text="Total Trips", font=('Segoe UI', 9),
                 bg='#6366f1', fg='white').pack()
         
         # Most Traveled Year
@@ -3499,7 +3499,7 @@ class ModernTravelCalendar:
         
         # Add percentage for past only
         if data.get('percentage_of_year', 0) > 0:
-            metrics.append(("📊", f"% of {data['selected_year']}", f"{data['percentage_of_year']:.1f}%"))
+            metrics.append(("📊", f"Percent of {data['selected_year']}", f"{data['percentage_of_year']:.1f}%"))
         
         # Create grid container
         metrics_grid = tk.Frame(content_frame, bg=self.colors['surface'])
