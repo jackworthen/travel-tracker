@@ -1056,7 +1056,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x475")  # Reduced height thanks to tabs
+        dialog.geometry("400x450")  # Reduced height thanks to tabs
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -2820,8 +2820,26 @@ class ModernTravelCalendar:
         self._current_filter_vars = filter_vars
         
         # Bind year selection change
-        year_combo.bind('<<ComboboxSelected>>', 
-                       lambda e: self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var))
+        def on_year_change(event):
+            # Check if selected year is in the past and automatically enable Past toggle
+            selected_year_str = year_var.get()
+            current_year = datetime.now().year
+            
+            if selected_year_str != "All Years":
+                try:
+                    selected_year = int(selected_year_str)
+                    if selected_year < current_year:
+                        # Automatically enable Past toggle for previous years
+                        if not filter_vars['past'].get():
+                            filter_vars['past'].set(True)
+                            update_button_appearance()
+                except ValueError:
+                    pass
+            
+            # Update the records display
+            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+        
+        year_combo.bind('<<ComboboxSelected>>', on_year_change)
         
         # Travel records
         records_frame = ttk.LabelFrame(main_container, text="📋 Travel Records", style='Card.TLabelframe')
