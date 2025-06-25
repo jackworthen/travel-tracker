@@ -9,6 +9,7 @@ import sys
 import subprocess
 import webbrowser
 import csv
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
@@ -83,6 +84,7 @@ class ModernTravelCalendar:
             # Year filter default
             'default_year_filter': 'Current Year',  # Options: 'All Years', 'Current Year'
             # Export settings
+            'export_file_type': 'CSV',  # Options: 'CSV', 'TXT', 'JSON', 'XML'
             'export_delimiter': ',',  # Default to comma
             'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home())  # Default to Downloads or Home folder
         }
@@ -707,8 +709,121 @@ class ModernTravelCalendar:
         # Last resort - current working directory
         return str(Path.cwd())
     
+    def get_file_extension_and_types(self, file_type):
+        """Get file extension and file dialog types based on export file type"""
+        if file_type == 'CSV':
+            return '.csv', [("CSV files", "*.csv"), ("All files", "*.*")]
+        elif file_type == 'TXT':
+            return '.txt', [("Text files", "*.txt"), ("All files", "*.*")]
+        elif file_type == 'JSON':
+            return '.json', [("JSON files", "*.json"), ("All files", "*.*")]
+        elif file_type == 'XML':
+            return '.xml', [("XML files", "*.xml"), ("All files", "*.*")]
+        else:
+            return '.csv', [("CSV files", "*.csv"), ("All files", "*.*")]
+    
+    def export_to_csv(self, file_path, filtered_records):
+        """Export records to CSV format"""
+        delimiter_char = self.validation_settings['export_delimiter']  # This is already ',' or '|'
+        
+        with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile, delimiter=delimiter_char, quoting=csv.QUOTE_MINIMAL)
+            
+            # Write header
+            writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
+            
+            # Write data
+            for record in filtered_records:
+                days = self.calculate_trip_days(record['start_date'], record['end_date'])
+                writer.writerow([
+                    self.format_date_for_display(record['start_date']),
+                    self.format_date_for_display(record['end_date']),
+                    str(days),
+                    record['location'],
+                    record.get('comment', '')
+                ])
+    
+    def export_to_txt(self, file_path, filtered_records):
+        """Export records to TXT format (delimited text)"""
+        import io
+        
+        delimiter_char = self.validation_settings['export_delimiter']  # This is already ',' or '|'
+        
+        with open(file_path, 'w', encoding='utf-8') as txtfile:
+            # Write header
+            header = delimiter_char.join(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
+            txtfile.write(header + '\n')
+            
+            # Write data
+            for record in filtered_records:
+                days = self.calculate_trip_days(record['start_date'], record['end_date'])
+                
+                # For TXT files, we'll use CSV writer to handle proper escaping
+                output = io.StringIO()
+                writer = csv.writer(output, delimiter=delimiter_char, quoting=csv.QUOTE_MINIMAL)
+                writer.writerow([
+                    self.format_date_for_display(record['start_date']),
+                    self.format_date_for_display(record['end_date']),
+                    str(days),
+                    record['location'],
+                    record.get('comment', '')
+                ])
+                # Strip any trailing newlines and add just one
+                line = output.getvalue().rstrip('\r\n') + '\n'
+                txtfile.write(line)
+    
+    def export_to_json(self, file_path, filtered_records):
+        """Export records to JSON format"""
+        export_data = []
+        
+        for record in filtered_records:
+            days = self.calculate_trip_days(record['start_date'], record['end_date'])
+            export_record = {
+                'departure_date': self.format_date_for_display(record['start_date']),
+                'return_date': self.format_date_for_display(record['end_date']),
+                'days': days,
+                'location': record['location'],
+                'notes': record.get('comment', '')
+            }
+            export_data.append(export_record)
+        
+        with open(file_path, 'w', encoding='utf-8') as jsonfile:
+            json.dump(export_data, jsonfile, indent=2, ensure_ascii=False)
+    
+    def export_to_xml(self, file_path, filtered_records):
+        """Export records to XML format"""
+        # Create root element
+        root = ET.Element('travel_records')
+        
+        for record in filtered_records:
+            days = self.calculate_trip_days(record['start_date'], record['end_date'])
+            
+            # Create record element
+            record_elem = ET.SubElement(root, 'record')
+            
+            # Add child elements
+            departure_elem = ET.SubElement(record_elem, 'departure_date')
+            departure_elem.text = self.format_date_for_display(record['start_date'])
+            
+            return_elem = ET.SubElement(record_elem, 'return_date')
+            return_elem.text = self.format_date_for_display(record['end_date'])
+            
+            days_elem = ET.SubElement(record_elem, 'days')
+            days_elem.text = str(days)
+            
+            location_elem = ET.SubElement(record_elem, 'location')
+            location_elem.text = record['location']
+            
+            notes_elem = ET.SubElement(record_elem, 'notes')
+            notes_elem.text = record.get('comment', '')
+        
+        # Create tree and write to file
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="  ", level=0)  # Pretty print formatting
+        tree.write(file_path, encoding='utf-8', xml_declaration=True)
+    
     def export_travel_records(self):
-        """Export currently filtered travel records to CSV"""
+        """Export currently filtered travel records in the configured format"""
         # Check if we have the necessary references from the report window
         if not (hasattr(self, '_current_filter_vars') and hasattr(self, '_current_year_var') and 
                 hasattr(self, '_current_search_var')):
@@ -727,53 +842,47 @@ class ModernTravelCalendar:
             return
         
         # Get export settings
-        delimiter = self.validation_settings['export_delimiter']
-        delimiter_char = '|' if delimiter == '|' else ','
+        file_type = self.validation_settings['export_file_type']
+        
+        # Get file extension and types
+        file_extension, file_types = self.get_file_extension_and_types(file_type)
         
         # Prepare default filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_filename = f"travel_records_{timestamp}.csv"
+        default_filename = f"travel_records_{timestamp}{file_extension}"
         
         # Get initial directory
         initial_dir = self.get_default_export_directory()
         
         # Open file dialog
         file_path = filedialog.asksaveasfilename(
-            title="Export Travel Records",
+            title=f"Export Travel Records as {file_type}",
             initialdir=initial_dir,
             initialfile=default_filename,
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            defaultextension=file_extension,
+            filetypes=file_types
         )
         
         if not file_path:
             return  # User cancelled
         
         try:
-            # Write CSV file
-            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                if delimiter_char == ',':
-                    writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-                else:
-                    writer = csv.writer(csvfile, delimiter='|', quoting=csv.QUOTE_MINIMAL)
-                
-                # Write header
-                writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
-                
-                # Write data
-                for record in filtered_records:
-                    days = self.calculate_trip_days(record['start_date'], record['end_date'])
-                    writer.writerow([
-                        self.format_date_for_display(record['start_date']),
-                        self.format_date_for_display(record['end_date']),
-                        str(days),
-                        record['location'],
-                        record.get('comment', '')
-                    ])
+            # Export based on file type
+            if file_type == 'CSV':
+                self.export_to_csv(file_path, filtered_records)
+            elif file_type == 'TXT':
+                self.export_to_txt(file_path, filtered_records)
+            elif file_type == 'JSON':
+                self.export_to_json(file_path, filtered_records)
+            elif file_type == 'XML':
+                self.export_to_xml(file_path, filtered_records)
+            else:
+                # Fallback to CSV
+                self.export_to_csv(file_path, filtered_records)
             
             # Show success message
             messagebox.showinfo("Export Successful", 
-                               f"✅ Successfully exported {len(filtered_records)} records to:\n{file_path}")
+                               f"✅ Successfully exported {len(filtered_records)} records to {file_type} format:\n{file_path}")
         
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export records:\n{str(e)}")
@@ -1061,7 +1170,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x475")  # Increased height for new Year filter setting
+        dialog.geometry("400x520")  # Increased height for file type setting
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1259,14 +1368,44 @@ class ModernTravelCalendar:
         export_content = tk.Frame(export_tab, bg=self.colors['surface'], padx=20, pady=20)
         export_content.pack(fill=tk.BOTH, expand=True)
         
+        # File type setting (NEW) - horizontal layout
+        file_type_frame = tk.Frame(export_content, bg=self.colors['surface'])
+        file_type_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(file_type_frame, text="File Type:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['export_file_type'] = tk.StringVar(value=self.validation_settings['export_file_type'])
+        file_type_combo = ttk.Combobox(file_type_frame, textvariable=settings_vars['export_file_type'],
+                                      values=["CSV", "TXT", "JSON", "XML"],
+                                      state="readonly", width=15, font=('Segoe UI', 10))
+        file_type_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Function to toggle delimiter based on file type
+        def toggle_delimiter_based_on_file_type():
+            """Enable/disable delimiter option based on file type selection"""
+            file_type = settings_vars['export_file_type'].get()
+            if file_type in ['CSV', 'TXT']:
+                delimiter_combo.config(state='readonly')
+                delimiter_label.config(fg=self.colors['text'])
+            else:
+                delimiter_combo.config(state='disabled')
+                delimiter_label.config(fg=self.colors['text_light'])
+        
+        # Bind file type change event
+        file_type_combo.bind('<<ComboboxSelected>>', lambda e: toggle_delimiter_based_on_file_type())
+        
         # Delimiter setting - horizontal layout
         delimiter_frame = tk.Frame(export_content, bg=self.colors['surface'])
         delimiter_frame.pack(fill=tk.X, pady=(0, 20))
         
-        tk.Label(delimiter_frame, text="Delimiter:",
-                font=('Segoe UI', 11),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
+        delimiter_label = tk.Label(delimiter_frame, text="Delimiter:",
+                                  font=('Segoe UI', 11),
+                                  fg=self.colors['text'],
+                                  bg=self.colors['surface'])
+        delimiter_label.pack(side=tk.LEFT)
         
         settings_vars['export_delimiter'] = tk.StringVar(value=self.validation_settings['export_delimiter'])
         delimiter_combo = ttk.Combobox(delimiter_frame, textvariable=settings_vars['export_delimiter'],
@@ -1280,6 +1419,9 @@ class ModernTravelCalendar:
             delimiter_combo.set("Pipe ( | )")
         
         delimiter_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Set initial state of delimiter based on file type
+        toggle_delimiter_based_on_file_type()
         
         # Export directory setting
         directory_frame = tk.Frame(export_content, bg=self.colors['surface'])
@@ -1343,10 +1485,15 @@ class ModernTravelCalendar:
                 self.validation_settings['default_year_filter'] = settings_vars['default_year_filter'].get()
                 
                 # Update export settings
+                self.validation_settings['export_file_type'] = settings_vars['export_file_type'].get()
+                
                 delimiter_choice = settings_vars['export_delimiter'].get()
                 if delimiter_choice == "Pipe ( | )":
                     self.validation_settings['export_delimiter'] = '|'
+                elif delimiter_choice == "Comma ( , )":
+                    self.validation_settings['export_delimiter'] = ','
                 else:
+                    # Fallback to comma if somehow we get an unexpected value
                     self.validation_settings['export_delimiter'] = ','
                 
                 self.validation_settings['export_directory'] = settings_vars['export_directory'].get()
