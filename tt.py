@@ -2582,7 +2582,7 @@ class ModernTravelCalendar:
         # Create modern report window
         report_window = tk.Toplevel(self.root)
         report_window.title("Travel Report")
-        report_window.geometry("860x800")  # Increased width to accommodate Days column
+        report_window.geometry("860x850")  # Updated height for better spacing
         report_window.configure(bg=self.colors['background'])
         
         # Store reference and set up cleanup
@@ -2596,8 +2596,12 @@ class ModernTravelCalendar:
         main_container.rowconfigure(3, weight=1)
                
         # Statistics cards
-        stats_frame = tk.Frame(main_container, bg=self.colors['background'])
-        stats_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
+        current_year = datetime.now().year
+        stats_container = ttk.LabelFrame(main_container, text=f"📊 {current_year} Travel Statistics", style='Card.TLabelframe')
+        stats_container.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 30))
+        
+        stats_frame = tk.Frame(stats_container, bg=self.colors['surface'])
+        stats_frame.pack(fill=tk.X, padx=10, pady=10)
         stats_frame.columnconfigure(0, weight=1)
         stats_frame.columnconfigure(1, weight=1)
         stats_frame.columnconfigure(2, weight=1)
