@@ -160,8 +160,8 @@ Click **"📊 Analytics Dashboard"** from the Travel Report or use **Ctrl+A** to
 #### 🏆 **Overall Travel Statistics**
 - **Total Trips** - Complete count of all travel records
 - **Total Travel Days** - Sum of all travel days across your entire history
+- **Total Weekend Days** - Shows how number of weekend travel days (Sat/Sunday)
 - **Most Traveled Year** - Identifies which year had the most travel days
-- **Travel Span** - Shows how many years of travel history you have
 - **Unique Locations** - Total count of different destinations visited
 - **Peak Month** - Shows busiest travel monmth
 
