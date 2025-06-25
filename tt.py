@@ -2497,6 +2497,49 @@ class ModernTravelCalendar:
                 continue
         return total_days
     
+    def calculate_peak_travel_month(self):
+        """Calculate which month has the most total travel days and return shortened month name"""
+        month_days = {}
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Iterate through each day of the trip
+                current_date = start_date
+                while current_date <= end_date:
+                    month_name = current_date.strftime('%B')  # Full month name
+                    month_days[month_name] = month_days.get(month_name, 0) + 1
+                    current_date += timedelta(days=1)
+                    
+            except ValueError:
+                continue
+        
+        if not month_days:
+            return "None"
+        
+        # Find the month with the most total travel days
+        peak_month = max(month_days.items(), key=lambda x: x[1])[0]
+        
+        # Convert to shortened form
+        month_abbreviations = {
+            'January': 'Jan',
+            'February': 'Feb',
+            'March': 'Mar',
+            'April': 'Apr',
+            'May': 'May',
+            'June': 'Jun',
+            'July': 'Jul',
+            'August': 'Aug',
+            'September': 'Sept',
+            'October': 'Oct',
+            'November': 'Nov',
+            'December': 'Dec'
+        }
+        
+        return month_abbreviations.get(peak_month, peak_month)
+    
     def update_statistics_cards(self):
         """Update the statistics cards in the report window"""
         if not (self.report_window and self.report_window.winfo_exists() and 
@@ -2999,7 +3042,8 @@ class ModernTravelCalendar:
                 'latest_trip': None,
                 'most_visited_location': '',
                 'location_counts': {},
-                'total_travel_days_all_years': self.calculate_total_travel_days_all_years()
+                'total_travel_days_all_years': self.calculate_total_travel_days_all_years(),
+                'peak_travel_month': self.calculate_peak_travel_month()
             }
         }
         
@@ -3150,7 +3194,7 @@ class ModernTravelCalendar:
         # Create analytics window
         analytics_window = tk.Toplevel(self.root)
         analytics_window.title("📊 Travel Analytics")
-        analytics_window.geometry("800x780")  # Reduced from 1200x800
+        analytics_window.geometry("850x780")  # Updated width for better card spacing
         analytics_window.configure(bg=self.colors['background'])
         
         # Main container with scrollable content
@@ -3265,19 +3309,18 @@ class ModernTravelCalendar:
         close_btn.pack()
     
     def update_overall_statistics(self, overall_content, overall_data):
-        """Update overall statistics section with new Total Travel Days card"""
+        """Update overall statistics section with Peak Travel Month card in single row"""
         # Clear existing content
         for widget in overall_content.winfo_children():
             widget.destroy()
         
-        # Overall stats cards - Updated for 5 cards
+        # Overall stats cards - Updated for 6 cards in single row
         overall_stats_frame = tk.Frame(overall_content, bg=self.colors['surface'])
         overall_stats_frame.pack(fill=tk.X)
-        overall_stats_frame.columnconfigure(0, weight=1)
-        overall_stats_frame.columnconfigure(1, weight=1)
-        overall_stats_frame.columnconfigure(2, weight=1)
-        overall_stats_frame.columnconfigure(3, weight=1)
-        overall_stats_frame.columnconfigure(4, weight=1)  # New column for 5th card
+        
+        # Configure grid for single row with 6 columns
+        for i in range(6):
+            overall_stats_frame.columnconfigure(i, weight=1)
         
         # Total Records (column 0)
         total_card = tk.Frame(overall_stats_frame, bg='#6366f1', relief='solid', bd=0, padx=16, pady=12)
@@ -3290,7 +3333,7 @@ class ModernTravelCalendar:
         tk.Label(total_card, text="Total Trips", font=('Segoe UI', 9),
                 bg='#6366f1', fg='white').pack()
         
-        # NEW: Total Travel Days (column 1) - Added between Total Trips and Most Traveled Year
+        # Total Travel Days (column 1)
         total_days_card = tk.Frame(overall_stats_frame, bg="#B915CB", relief='solid', bd=0, padx=16, pady=12)
         total_days_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=3)
         
@@ -3301,7 +3344,7 @@ class ModernTravelCalendar:
         tk.Label(total_days_card, text="Total Travel Days", font=('Segoe UI', 9),
                 bg='#B915CB', fg='white').pack()
         
-        # Most Traveled Year (moved to column 2)
+        # Most Traveled Year (column 2)
         year_card = tk.Frame(overall_stats_frame, bg='#ec4899', relief='solid', bd=0, padx=16, pady=12)
         year_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=3)
         
@@ -3312,7 +3355,7 @@ class ModernTravelCalendar:
         tk.Label(year_card, text="Most Traveled Year", font=('Segoe UI', 9),
                 bg='#ec4899', fg='white').pack()
         
-        # Travel Span (moved to column 3)
+        # Travel Span (column 3)
         span_card = tk.Frame(overall_stats_frame, bg='#10b981', relief='solid', bd=0, padx=16, pady=12)
         span_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=3)
         
@@ -3331,10 +3374,10 @@ class ModernTravelCalendar:
             tk.Label(span_card, text="Years of Travel", font=('Segoe UI', 9),
                     bg='#10b981', fg='white').pack()
         
-        # Unique Locations (moved to column 4)
+        # Unique Locations (column 4)
         locations_count = len(set(overall_data['location_counts'].keys()))
         unique_card = tk.Frame(overall_stats_frame, bg='#f59e0b', relief='solid', bd=0, padx=16, pady=12)
-        unique_card.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=(3, 0))
+        unique_card.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=3)
         
         tk.Label(unique_card, text="🌍", font=('Segoe UI', 16), 
                 bg='#f59e0b', fg='white').pack()
@@ -3342,6 +3385,17 @@ class ModernTravelCalendar:
                 font=('Segoe UI', 20, 'bold'), bg='#f59e0b', fg='white').pack()
         tk.Label(unique_card, text="Unique Locations", font=('Segoe UI', 9),
                 bg='#f59e0b', fg='white').pack()
+        
+        # Peak Travel Month (column 5)
+        peak_month_card = tk.Frame(overall_stats_frame, bg='#e11d48', relief='solid', bd=0, padx=16, pady=12)
+        peak_month_card.grid(row=0, column=5, sticky=(tk.W, tk.E), padx=(3, 0))
+        
+        tk.Label(peak_month_card, text="📆", font=('Segoe UI', 16), 
+                bg='#e11d48', fg='white').pack()
+        tk.Label(peak_month_card, text=str(overall_data['peak_travel_month']), 
+                font=('Segoe UI', 20, 'bold'), bg='#e11d48', fg='white').pack()
+        tk.Label(peak_month_card, text="Peak Month", font=('Segoe UI', 9),
+                bg='#e11d48', fg='white').pack()
     
     def update_analytics_section(self, content_frame, data, bg_color, text_color):
         """Update an analytics section with new data using compact grid layout"""
