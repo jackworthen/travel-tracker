@@ -39,7 +39,7 @@ A beautiful, modern desktop application built with Python and tkinter that helps
 - 🎨 **Visual data cards** - Modern, color-coded cards for easy data interpretation
 
 ### 📤 **Flexible Export System**
-- **CSV export** - Export your filtered travel data to spreadsheet-compatible files
+- **Records export** - Export your filtered travel data to spreadsheet-compatible files (CSV, TXT, XML, JSON)
 - **Multiple delimiter options** - Choose from Comma or Pipe delimiters
 - **Smart filtering** - Export exactly what you see based on current filters
 - **Custom export directory** - Set your preferred save location
@@ -144,7 +144,7 @@ Click **"📊 View Travel Report"** to access the enhanced analytics dashboard:
 - **Complete trip history** with sortable columns
 - ✏️ **Edit trips** - Modify any travel record with full validation
 - 🗑️ **Delete entries** - Remove unwanted trips with confirmation
-- 📤 **Export filtered data** - Save your travel records to CSV with custom formatting
+- 📤 **Export filtered data** - Save your travel records with custom formatting
 - 🎨 **Visual status indicators** - Clear color coding for trip status
 
 ### Accessing the Analytics Dashboard
@@ -171,7 +171,7 @@ The **📤 Export** button in the Travel Report allows you to save your travel r
 
 #### 📤 **Export Features**
 - **Respects current filters** - Only exports what you see in the current view
-- **Multiple file formats** - CSV files with your choice of delimiter
+- **Multiple file formats** - CSV or TXT files with your choice of delimiter
 - **Complete data export** - Includes all trip details: dates, duration, location, and notes
 - **Smart file naming** - Automatic timestamp-based file names (travel_records_YYYYMMDD_HHMMSS.csv)
 - **Custom save location** - Choose where to save your files
