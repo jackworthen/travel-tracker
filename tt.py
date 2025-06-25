@@ -60,6 +60,9 @@ class ModernTravelCalendar:
         # Report window tracking
         self.report_window = None
         
+        # Analytics window tracking
+        self.analytics_window = None
+        
         # Current display
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
@@ -3183,6 +3186,13 @@ class ModernTravelCalendar:
             messagebox.showinfo("Analytics", "📊 No travel records found for analytics.")
             return
         
+        # Check if analytics window already exists
+        if self.analytics_window and self.analytics_window.winfo_exists():
+            # Bring existing window to front
+            self.analytics_window.lift()
+            self.analytics_window.focus_force()
+            return
+        
         # Get available years
         past_years = self.get_available_past_years()
         future_years = self.get_available_future_years()
@@ -3196,6 +3206,10 @@ class ModernTravelCalendar:
         analytics_window.title("📊 Travel Analytics")
         analytics_window.geometry("850x780")  # Updated width for better card spacing
         analytics_window.configure(bg=self.colors['background'])
+        
+        # Store reference and set up cleanup
+        self.analytics_window = analytics_window
+        analytics_window.protocol("WM_DELETE_WINDOW", self._on_analytics_window_close)
         
         # Main container with scrollable content
         main_container = tk.Frame(analytics_window, bg=self.colors['background'])
@@ -3468,6 +3482,12 @@ class ModernTravelCalendar:
             shortest_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(1, 0))
             tk.Label(shortest_card, text=f"Shortest: {data['shortest_trip']} days", 
                     font=('Segoe UI', 8), bg='#71717a', fg='white').pack()  # Reduced font
+
+    def _on_analytics_window_close(self):
+        """Handle analytics window close event"""
+        if self.analytics_window:
+            self.analytics_window.destroy()
+            self.analytics_window = None
 
     def _on_report_window_close(self):
         """Handle report window close event"""
