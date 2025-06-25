@@ -3093,7 +3093,7 @@ class ModernTravelCalendar:
                               command=lambda: self.delete_record(records_tree))
         delete_btn.pack(side=tk.LEFT, padx=(0, 10))
         
-        export_btn = tk.Button(buttons_frame, text="📤 Export",
+        export_btn = tk.Button(buttons_frame, text="📤 Export Results",
                               bg=self.colors['accent'], fg='white',
                               font=('Segoe UI', 10, 'bold'),
                               relief='flat', bd=0, padx=12, pady=8,
