@@ -3473,15 +3473,15 @@ class ModernTravelCalendar:
             extremes_grid.columnconfigure(0, weight=1)
             extremes_grid.columnconfigure(1, weight=1)
             
-            longest_card = tk.Frame(extremes_grid, bg='#a3a3a3', relief='solid', bd=0, padx=6, pady=3)  # Reduced padding
+            longest_card = tk.Frame(extremes_grid, bg='#2563eb', relief='solid', bd=0, padx=6, pady=3)  # Blue for longest
             longest_card.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 1))
             tk.Label(longest_card, text=f"Longest: {data['longest_trip']} days", 
-                    font=('Segoe UI', 8), bg='#a3a3a3', fg='white').pack()  # Reduced font
+                    font=('Segoe UI', 8), bg='#2563eb', fg='white').pack()  # Reduced font
             
-            shortest_card = tk.Frame(extremes_grid, bg='#71717a', relief='solid', bd=0, padx=6, pady=3)  # Reduced padding
+            shortest_card = tk.Frame(extremes_grid, bg='#10b981', relief='solid', bd=0, padx=6, pady=3)  # Green for shortest
             shortest_card.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(1, 0))
             tk.Label(shortest_card, text=f"Shortest: {data['shortest_trip']} days", 
-                    font=('Segoe UI', 8), bg='#71717a', fg='white').pack()  # Reduced font
+                    font=('Segoe UI', 8), bg='#10b981', fg='white').pack()  # Reduced font
 
     def _on_analytics_window_close(self):
         """Handle analytics window close event"""
