@@ -163,6 +163,7 @@ Click **"📊 Analytics Dashboard"** from the Travel Report or use **Ctrl+A** to
 - **Most Traveled Year** - Identifies which year had the most travel days
 - **Travel Span** - Shows how many years of travel history you have
 - **Unique Locations** - Total count of different destinations visited
+- **Peak Month** - Shows busiest travel monmth
 
 ### Exporting Your Travel Data
 
