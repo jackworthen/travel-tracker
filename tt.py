@@ -2647,6 +2647,28 @@ class ModernTravelCalendar:
                 continue
         return total_days
     
+    def calculate_total_weekend_days_all_years(self):
+        """Calculate total weekend days across all travel records"""
+        total_weekend_days = 0
+        
+        for record in self.travel_records:
+            try:
+                start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(record['end_date'], '%Y-%m-%d')
+                
+                # Count weekend days for this trip
+                current_date = start_date
+                while current_date <= end_date:
+                    if current_date.weekday() in [5, 6]:  # Saturday (5) and Sunday (6)
+                        total_weekend_days += 1
+                    current_date += timedelta(days=1)
+                    
+            except ValueError:
+                # Skip records with invalid dates
+                continue
+        
+        return total_weekend_days
+    
     def calculate_peak_travel_month(self):
         """Calculate which month has the most total travel days and return shortened month name"""
         month_days = {}
@@ -3197,6 +3219,7 @@ class ModernTravelCalendar:
                 'most_visited_location': '',
                 'location_counts': {},
                 'total_travel_days_all_years': self.calculate_total_travel_days_all_years(),
+                'total_weekend_days_all_years': self.calculate_total_weekend_days_all_years(),
                 'peak_travel_month': self.calculate_peak_travel_month()
             }
         }
@@ -3509,9 +3532,20 @@ class ModernTravelCalendar:
         tk.Label(total_days_card, text="Total Travel Days", font=('Segoe UI', 9),
                 bg='#B915CB', fg='white').pack()
         
-        # Most Traveled Year (column 2)
+        # Total Weekend Days (column 2)
+        weekend_card = tk.Frame(overall_stats_frame, bg='#10b981', relief='solid', bd=0, padx=16, pady=12)
+        weekend_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=3)
+        
+        tk.Label(weekend_card, text="🏖️", font=('Segoe UI', 16), 
+                bg='#10b981', fg='white').pack()
+        tk.Label(weekend_card, text=str(overall_data['total_weekend_days_all_years']), 
+                font=('Segoe UI', 20, 'bold'), bg='#10b981', fg='white').pack()
+        tk.Label(weekend_card, text="Total Weekend Days", font=('Segoe UI', 9),
+                bg='#10b981', fg='white').pack()
+        
+        # Most Traveled Year (column 3)
         year_card = tk.Frame(overall_stats_frame, bg='#ec4899', relief='solid', bd=0, padx=16, pady=12)
-        year_card.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=3)
+        year_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=3)
         
         tk.Label(year_card, text="🏆", font=('Segoe UI', 16), 
                 bg='#ec4899', fg='white').pack()
@@ -3519,25 +3553,6 @@ class ModernTravelCalendar:
                 font=('Segoe UI', 20, 'bold'), bg='#ec4899', fg='white').pack()
         tk.Label(year_card, text="Most Traveled Year", font=('Segoe UI', 9),
                 bg='#ec4899', fg='white').pack()
-        
-        # Travel Span (column 3)
-        span_card = tk.Frame(overall_stats_frame, bg='#10b981', relief='solid', bd=0, padx=16, pady=12)
-        span_card.grid(row=0, column=3, sticky=(tk.W, tk.E), padx=3)
-        
-        tk.Label(span_card, text="📅", font=('Segoe UI', 16), 
-                bg='#10b981', fg='white').pack()
-        
-        if overall_data['earliest_trip'] and overall_data['latest_trip']:
-            span_years = overall_data['latest_trip'].year - overall_data['earliest_trip'].year + 1
-            tk.Label(span_card, text=f"{span_years}", 
-                    font=('Segoe UI', 20, 'bold'), bg='#10b981', fg='white').pack()
-            tk.Label(span_card, text="Years of Travel", font=('Segoe UI', 9),
-                    bg='#10b981', fg='white').pack()
-        else:
-            tk.Label(span_card, text="0", 
-                    font=('Segoe UI', 20, 'bold'), bg='#10b981', fg='white').pack()
-            tk.Label(span_card, text="Years of Travel", font=('Segoe UI', 9),
-                    bg='#10b981', fg='white').pack()
         
         # Unique Locations (column 4)
         locations_count = len(set(overall_data['location_counts'].keys()))
