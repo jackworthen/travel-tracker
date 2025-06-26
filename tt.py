@@ -1067,10 +1067,10 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
-        # NEW: Style for travel days that are also current day (blue background, red text)
+        # NEW: Style for travel days that are also current day (blue background, blue text)
         style.configure('CalendarTravelCurrent.TButton',
                        background=self.colors['accent'],  # Blue background for travel
-                       foreground=self.colors['danger'],  # Red text for current day
+                       foreground=self.colors['primary'],  # Blue text for current day
                        borderwidth=1,
                        relief='solid',
                        padding=(8, 8),
@@ -1078,8 +1078,8 @@ class ModernTravelCalendar:
         style.map('CalendarTravelCurrent.TButton',
                  background=[('active', '#0891b2'),
                            ('pressed', '#0e7490')],
-                 foreground=[('active', self.colors['danger']),
-                           ('pressed', self.colors['danger'])])
+                 foreground=[('active', self.colors['primary']),
+                           ('pressed', self.colors['primary'])])
         
         style.configure('CalendarSelected.TButton',
                        background=self.colors['warning'],
@@ -1094,10 +1094,10 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
-        # UPDATED: Current date button style (normal background, red text)
+        # UPDATED: Current date button style (normal background, blue text)
         style.configure('CalendarCurrent.TButton',
                        background=self.colors['surface'],  # Normal background instead of red
-                       foreground=self.colors['danger'],   # Red text for current day indicator
+                       foreground=self.colors['primary'],   # Blue text for current day indicator
                        borderwidth=1,
                        relief='solid',
                        padding=(8, 8),
@@ -1105,8 +1105,8 @@ class ModernTravelCalendar:
         style.map('CalendarCurrent.TButton',
                  background=[('active', self.colors['border']),
                            ('pressed', self.colors['secondary'])],
-                 foreground=[('active', self.colors['danger']),
-                           ('pressed', self.colors['danger'])])
+                 foreground=[('active', self.colors['primary']),
+                           ('pressed', self.colors['primary'])])
         
         # Navigation button styles
         style.configure('Nav.TButton',
@@ -1753,7 +1753,7 @@ class ModernTravelCalendar:
         
         legend_items = [
             ("🏠 No Travel", self.colors['surface']),
-            ("📅 Today", self.colors['surface']),  # Updated: normal background for today
+            ("📅 Today", self.colors['surface']),  # Updated: normal background for today with blue text
             ("✈️ Travel Days", self.colors['accent']),
             ("📍 Selected", self.colors['warning'])
         ]
@@ -1762,7 +1762,7 @@ class ModernTravelCalendar:
             legend_item = tk.Label(legend_frame, text=text,
                                   font=('Segoe UI', 9),
                                   bg=color,
-                                  fg=self.colors['danger'] if text == "📅 Today" else ('white' if color != self.colors['surface'] else self.colors['text']),  # Red text for today
+                                  fg=self.colors['primary'] if text == "📅 Today" else ('white' if color != self.colors['surface'] else self.colors['text']),  # Blue text for today
                                   padx=8, pady=4,
                                   relief='solid', bd=1)
             legend_item.pack(side=tk.LEFT, padx=(10, 0))

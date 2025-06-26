@@ -11,7 +11,7 @@ A beautiful, modern desktop application built with Python and tkinter that helps
 ### 📅 **Interactive Calendar View**
 - **Visual date selection** - Click dates to select travel periods
 - **Color-coded travel days** - See your trips at a glance with cyan highlighting
-- **Today indicator** - Current date highlighted in red for easy orientation
+- **Today indicator** - Current date displayed in blue for easy orientation
 - **Range selection** - Easily pick start and end dates
 - **Month navigation** - Browse through different months effortlessly
 - **Sunday-first layout** - Standard US calendar format for familiar navigation
@@ -227,7 +227,7 @@ Use **View → Settings** (Ctrl+S) to customize your experience with four compre
 
 ### Calendar Color Legend
 - 🏠 **White** - Regular days (no travel)
-- 📅 **Red** - Today's date
+- 📅 **Blue** - Today's date
 - ✈️ **Cyan** - Travel days
 - 📍 **Orange** - Selected date range
 
