@@ -3508,8 +3508,8 @@ class ModernTravelCalendar:
         
         close_btn = tk.Button(close_frame, text="✖️ Close Dashboard",
                              bg=self.colors['secondary'], fg='white',
-                             font=('Segoe UI', 11, 'bold'),  # Reduced from 12
-                             relief='flat', bd=0, padx=25, pady=10,  # Reduced padding
+                             font=('Segoe UI', 10, 'bold'),
+                             relief='flat', bd=0, padx=12, pady=8,
                              activebackground='#475569', activeforeground='white',
                              command=analytics_window.destroy)
         close_btn.pack()
