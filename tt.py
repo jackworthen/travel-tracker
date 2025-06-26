@@ -1067,6 +1067,20 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
+        # NEW: Style for travel days that are also current day (blue background, red text)
+        style.configure('CalendarTravelCurrent.TButton',
+                       background=self.colors['accent'],  # Blue background for travel
+                       foreground=self.colors['danger'],  # Red text for current day
+                       borderwidth=1,
+                       relief='solid',
+                       padding=(8, 8),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('CalendarTravelCurrent.TButton',
+                 background=[('active', '#0891b2'),
+                           ('pressed', '#0e7490')],
+                 foreground=[('active', self.colors['danger']),
+                           ('pressed', self.colors['danger'])])
+        
         style.configure('CalendarSelected.TButton',
                        background=self.colors['warning'],
                        foreground=self.colors['text'],  # Changed from 'white' to dark text
@@ -1080,19 +1094,19 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
-        # Current date button style
+        # UPDATED: Current date button style (normal background, red text)
         style.configure('CalendarCurrent.TButton',
-                       background=self.colors['danger'],
-                       foreground=self.colors['text'],
+                       background=self.colors['surface'],  # Normal background instead of red
+                       foreground=self.colors['danger'],   # Red text for current day indicator
                        borderwidth=1,
                        relief='solid',
                        padding=(8, 8),
                        font=('Segoe UI', 10, 'bold'))
         style.map('CalendarCurrent.TButton',
-                 background=[('active', '#dc2626'),
-                           ('pressed', '#b91c1c')],
-                 foreground=[('active', self.colors['text']),
-                           ('pressed', self.colors['text'])])
+                 background=[('active', self.colors['border']),
+                           ('pressed', self.colors['secondary'])],
+                 foreground=[('active', self.colors['danger']),
+                           ('pressed', self.colors['danger'])])
         
         # Navigation button styles
         style.configure('Nav.TButton',
@@ -1739,7 +1753,7 @@ class ModernTravelCalendar:
         
         legend_items = [
             ("🏠 No Travel", self.colors['surface']),
-            ("📅 Today", self.colors['danger']),
+            ("📅 Today", self.colors['surface']),  # Updated: normal background for today
             ("✈️ Travel Days", self.colors['accent']),
             ("📍 Selected", self.colors['warning'])
         ]
@@ -1748,7 +1762,7 @@ class ModernTravelCalendar:
             legend_item = tk.Label(legend_frame, text=text,
                                   font=('Segoe UI', 9),
                                   bg=color,
-                                  fg='white' if color != self.colors['surface'] else self.colors['text'],
+                                  fg=self.colors['danger'] if text == "📅 Today" else ('white' if color != self.colors['surface'] else self.colors['text']),  # Red text for today
                                   padx=8, pady=4,
                                   relief='solid', bd=1)
             legend_item.pack(side=tk.LEFT, padx=(10, 0))
@@ -1880,13 +1894,17 @@ class ModernTravelCalendar:
                     is_selected = self.date_is_selected(date_obj)
                     is_current = self.date_is_current(date_obj)
                     
-                    # Determine style (priority: selected > current > travel > normal)
+                    # UPDATED: Determine style with new priority logic
                     if is_selected:
                         style = 'CalendarSelected.TButton'
-                    elif is_current:
-                        style = 'CalendarCurrent.TButton'
+                    elif has_travel and is_current:
+                        # NEW: Travel day that is also current day (blue background, red text)
+                        style = 'CalendarTravelCurrent.TButton'
                     elif has_travel:
                         style = 'CalendarTravel.TButton'
+                    elif is_current:
+                        # UPDATED: Current day without travel (normal background, red text)
+                        style = 'CalendarCurrent.TButton'
                     else:
                         style = 'Calendar.TButton'
                     
