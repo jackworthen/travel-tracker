@@ -18,7 +18,7 @@ class ModernTravelCalendar:
     def __init__(self, root):
         self.root = root
         self.root.title("Travel Tracker")
-        self.root.geometry("1000x720")
+        self.root.geometry("1000x760")
 
         # Set calendar to start with Sunday
         calendar.setfirstweekday(6)  # Sunday = 6
@@ -1689,6 +1689,14 @@ class ModernTravelCalendar:
                               activebackground=self.colors['primary_light'], activeforeground='white',
                               command=self.show_report)
         report_btn.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        
+        analytics_btn = tk.Button(button_frame, text="📈 Analytics Dashboard",
+                                 bg='#8b5cf6', fg='white',  # Purple color
+                                 font=('Segoe UI', 10, 'bold'),
+                                 relief='flat', bd=0, padx=12, pady=8,
+                                 activebackground='#7c3aed', activeforeground='white',
+                                 command=self.show_analytics_dashboard)
+        analytics_btn.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
     
     def setup_calendar_panel(self, parent):
         calendar_frame = ttk.LabelFrame(parent, text="📅 Calendar View", style='Card.TLabelframe')
@@ -3141,7 +3149,7 @@ class ModernTravelCalendar:
                               command=self.export_travel_records)
         export_btn.pack(side=tk.LEFT, padx=(0, 10))
         
-        analytics_btn = tk.Button(buttons_frame, text="📊 Analytics Dashboard",
+        analytics_btn = tk.Button(buttons_frame, text="📈 Analytics Dashboard",
                                  bg='#8b5cf6', fg='white',  # Purple color
                                  font=('Segoe UI', 10, 'bold'),
                                  relief='flat', bd=0, padx=12, pady=8,
@@ -3375,7 +3383,7 @@ class ModernTravelCalendar:
     def show_analytics_dashboard(self):
         """Show comprehensive analytics dashboard in a new window"""
         if not self.travel_records:
-            messagebox.showinfo("Analytics", "📊 No travel records found for analytics.")
+            messagebox.showinfo("Analytics", "📈 No travel records found for analytics.")
             return
         
         # Check if analytics window already exists
@@ -3390,12 +3398,12 @@ class ModernTravelCalendar:
         future_years = self.get_available_future_years()
         
         if not past_years and not future_years:
-            messagebox.showinfo("Analytics", "📊 No travel records found for analytics.")
+            messagebox.showinfo("Analytics", "📈 No travel records found for analytics.")
             return
         
         # Create analytics window
         analytics_window = tk.Toplevel(self.root)
-        analytics_window.title("📊 Travel Analytics")
+        analytics_window.title("📈 Travel Analytics")
         analytics_window.geometry("850x780")  # Updated width for better card spacing
         analytics_window.configure(bg=self.colors['background'])
         
@@ -3409,7 +3417,7 @@ class ModernTravelCalendar:
         
         # Title
         title_label = tk.Label(main_container, 
-                              text="📊 Travel Analytics Dashboard", 
+                              text="📈 Travel Analytics Dashboard", 
                               font=('Segoe UI', 16, 'bold'),  # Reduced from 18
                               fg=self.colors['primary'],
                               bg=self.colors['background'])
