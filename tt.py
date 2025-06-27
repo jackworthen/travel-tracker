@@ -1164,7 +1164,6 @@ class ModernTravelCalendar:
         view_menu.add_command(label="Analytics Dashboard", command=self.show_analytics_dashboard, accelerator="(Ctrl+A)")
         view_menu.add_command(label="Travel Report", command=self.show_report, accelerator="(Ctrl+R)")
         view_menu.add_separator()
-
         view_menu.add_command(label="Settings", command=self.show_validation_settings, accelerator="(Ctrl+S)")
         
         # Help menu
@@ -3262,6 +3261,12 @@ class ModernTravelCalendar:
         else:
             days_elapsed_in_past_year = 365 + (1 if selected_past_year % 4 == 0 and (selected_past_year % 100 != 0 or selected_past_year % 400 == 0) else 0)
         
+        # Calculate total days in the future year for percentage calculation
+        days_in_future_year = 365 + (1 if selected_future_year % 4 == 0 and (selected_future_year % 100 != 0 or selected_future_year % 400 == 0) else 0)
+        
+        # Track total travel days for the future year (including past + future travel)
+        total_future_year_days = 0
+        
         for record in self.travel_records:
             try:
                 start_date = datetime.strptime(record['start_date'], '%Y-%m-%d')
@@ -3300,6 +3305,9 @@ class ModernTravelCalendar:
                 # Check if trip overlaps with selected future year and hasn't ended yet
                 future_year_overlap = (start_date <= future_year_end and end_date >= future_year_start and end_date >= current_date)
                 
+                # NEW: Check if trip overlaps with selected future year (including both past and future travel in that year)
+                future_year_total_overlap = (start_date <= future_year_end and end_date >= future_year_start)
+                
                 if past_year_overlap:
                     analytics['past']['trips'] += 1
                     analytics['past']['locations'].add(location)
@@ -3334,8 +3342,8 @@ class ModernTravelCalendar:
                     overlap_end = min(end_date, future_year_end)
                     
                     if overlap_start <= overlap_end:
-                        days_in_future_year = (overlap_end - overlap_start).days + 1
-                        analytics['future']['days'] += days_in_future_year
+                        days_in_future_trip = (overlap_end - overlap_start).days + 1
+                        analytics['future']['days'] += days_in_future_trip
                         
                         # Count weekend days
                         current_day = overlap_start
@@ -3347,6 +3355,15 @@ class ModernTravelCalendar:
                     # Count months
                     month_name = start_date.strftime('%B')
                     analytics['future']['months'][month_name] = analytics['future']['months'].get(month_name, 0) + 1
+                
+                # NEW: Calculate total travel days for the future year (including both past and future travel)
+                if future_year_total_overlap:
+                    overlap_start = max(start_date, future_year_start)
+                    overlap_end = min(end_date, future_year_end)
+                    
+                    if overlap_start <= overlap_end:
+                        days_in_total_year = (overlap_end - overlap_start).days + 1
+                        total_future_year_days += days_in_total_year
                     
             except ValueError:
                 continue
@@ -3361,6 +3378,9 @@ class ModernTravelCalendar:
         
         # Calculate percentage for past year
         analytics['past']['percentage_of_year'] = (analytics['past']['days'] / days_elapsed_in_past_year) * 100 if days_elapsed_in_past_year > 0 else 0
+        
+        # NEW: Calculate percentage for future year (including both past and future travel)
+        analytics['future']['percentage_of_year'] = (total_future_year_days / days_in_future_year) * 100 if days_in_future_year > 0 else 0
         
         # Most visited location (overall)
         if analytics['overall']['location_counts']:
@@ -3618,7 +3638,7 @@ class ModernTravelCalendar:
             ("⏰", "Weekend Days", data['weekend_days']),
         ]
         
-        # Add percentage for past only
+        # Add percentage for both past and future travel
         if data.get('percentage_of_year', 0) > 0:
             metrics.append(("📊", f"Percent of {data['selected_year']}", f"{data['percentage_of_year']:.1f}%"))
         
