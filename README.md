@@ -341,34 +341,6 @@ All settings are automatically saved and restored between sessions, with immedia
 
 ---
 
-## 🔍 Pro Tips
-
-### Search Like a Pro
-- Use **partial matches** - Type "par" to find "Paris" trips
-- Search by **year** - Type "2023" to find all trips from that year  
-- Find **keywords in notes** - Search flight numbers, hotel names, or any detail
-- **Combine filters** - Use search with status toggles and year selection
-
-### Efficient Trip Management
-- **Toggle status filters** to focus on specific trip types
-- **Sort columns** by clicking headers for organized viewing
-- **Edit from report** - Double-click any trip to modify it
-- **Use keyboard shortcuts** for faster navigation
-
-### Export Best Practices
-- **Filter before exporting** - Use search and toggles to export exactly what you need
-- **Choose the right delimiter** - Use Pipe for data containing commas
-- **Set a consistent export directory** - Configure once in Settings for streamlined workflow
-- **Check file names** - Automatic timestamps prevent accidental overwrites
-
-### Analytics Dashboard Best Practices
-- **Select specific years** - Focus on particular years for detailed analysis
-- **Compare metrics** - Use different year selections to compare travel patterns
-- **Track trends** - Monitor changes in travel frequency and destinations over time
-- **Plan future travel** - Use future analytics to balance upcoming trips
-
----
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
