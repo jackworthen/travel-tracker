@@ -89,7 +89,9 @@ class ModernTravelCalendar:
             'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home()),  # Default to Downloads or Home folder
             # Date format settings
             'entry_date_format': 'MM/DD/YYYY',  # Format for New Travel Entry fields
-            'report_date_format': 'MM-DD-YYYY'  # Format for Travel Records display
+            'report_date_format': 'MM-DD-YYYY',  # Format for Travel Records display
+            # Calendar color settings
+            'today_color': 'Blue'  # Color for today's date on calendar
         }
         self.load_config()  # Load saved settings from config file
         
@@ -752,6 +754,25 @@ class ModernTravelCalendar:
         self.root.wait_window(dialog)
         return result['continue']
     
+    def get_today_color_options(self):
+        """Get list of available color options for today's date"""
+        # Alphabetical order as requested
+        colors = ['Blue', 'Brown', 'Green', 'Orange', 'Pink', 'Purple', 'Red']
+        return colors
+    
+    def get_today_color_hex(self, color_name):
+        """Get hex color code for today's date color"""
+        color_mapping = {
+            'Blue': '#2563eb',
+            'Brown': '#92400e', 
+            'Green': '#16a34a',
+            'Orange': '#ea580c',
+            'Pink': '#ec4899',
+            'Purple': '#9333ea',
+            'Red': '#dc2626'
+        }
+        return color_mapping.get(color_name, '#2563eb')  # Default to blue
+    
     def get_date_format_options(self):
         """Get list of available date format options with current date examples"""
         current_date = datetime.now()
@@ -1196,19 +1217,20 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
-        # NEW: Style for travel days that are also current day (blue background, blue text)
-        style.configure('CalendarTravelCurrent.TButton',
-                       background=self.colors['accent'],  # Blue background for travel
-                       foreground=self.colors['primary'],  # Blue text for current day
+        # UPDATED: Current date button style (normal background, user-selected text color)
+        today_color = self.get_today_color_hex(self.validation_settings.get('today_color', 'Blue'))
+        style.configure('CalendarCurrent.TButton',
+                       background=self.colors['surface'],  # Normal background instead of red
+                       foreground=today_color,   # User-selected color for current day indicator
                        borderwidth=1,
                        relief='solid',
                        padding=(8, 8),
                        font=('Segoe UI', 10, 'bold'))
-        style.map('CalendarTravelCurrent.TButton',
-                 background=[('active', '#0891b2'),
-                           ('pressed', '#0e7490')],
-                 foreground=[('active', self.colors['primary']),
-                           ('pressed', self.colors['primary'])])
+        style.map('CalendarCurrent.TButton',
+                 background=[('active', self.colors['border']),
+                           ('pressed', self.colors['secondary'])],
+                 foreground=[('active', today_color),
+                           ('pressed', today_color)])
         
         style.configure('CalendarSelected.TButton',
                        background=self.colors['warning'],
@@ -1223,19 +1245,19 @@ class ModernTravelCalendar:
                  foreground=[('active', self.colors['text']),
                            ('pressed', self.colors['text'])])
         
-        # UPDATED: Current date button style (normal background, blue text)
-        style.configure('CalendarCurrent.TButton',
-                       background=self.colors['surface'],  # Normal background instead of red
-                       foreground=self.colors['primary'],   # Blue text for current day indicator
+        # NEW: Style for travel days that are also current day (blue background, user-selected text)
+        style.configure('CalendarTravelCurrent.TButton',
+                       background=self.colors['accent'],  # Blue background for travel
+                       foreground=today_color,  # User-selected color for current day
                        borderwidth=1,
                        relief='solid',
                        padding=(8, 8),
                        font=('Segoe UI', 10, 'bold'))
-        style.map('CalendarCurrent.TButton',
-                 background=[('active', self.colors['border']),
-                           ('pressed', self.colors['secondary'])],
-                 foreground=[('active', self.colors['primary']),
-                           ('pressed', self.colors['primary'])])
+        style.map('CalendarTravelCurrent.TButton',
+                 background=[('active', '#0891b2'),
+                           ('pressed', '#0e7490')],
+                 foreground=[('active', today_color),
+                           ('pressed', today_color)])
         
         # Navigation button styles
         style.configure('Nav.TButton',
@@ -1370,6 +1392,21 @@ class ModernTravelCalendar:
                                          values=format_display_options,
                                          state="readonly", width=20, font=('Segoe UI', 10))
         entry_format_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Today's Date Color setting
+        today_color_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        today_color_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(today_color_frame, text="Today's Date Color:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['today_color'] = tk.StringVar(value=self.validation_settings.get('today_color', 'Blue'))
+        today_color_combo = ttk.Combobox(today_color_frame, textvariable=settings_vars['today_color'],
+                                        values=self.get_today_color_options(),
+                                        state="readonly", width=15, font=('Segoe UI', 10))
+        today_color_combo.pack(side=tk.LEFT, padx=(10, 0))
         
         # Location length - horizontal layout
         location_frame = tk.Frame(input_content, bg=self.colors['surface'])
@@ -1696,6 +1733,9 @@ class ModernTravelCalendar:
                 self.validation_settings['entry_date_format'] = self.extract_format_name_from_display(entry_format_display)
                 self.validation_settings['report_date_format'] = self.extract_format_name_from_display(report_format_display)
                 
+                # Update today's date color setting
+                self.validation_settings['today_color'] = settings_vars['today_color'].get()
+                
                 # Update export settings
                 self.validation_settings['export_file_type'] = settings_vars['export_file_type'].get()
                 
@@ -1712,6 +1752,11 @@ class ModernTravelCalendar:
                 
                 # Save settings to config file
                 self.save_config()
+                
+                # Refresh calendar styles to apply color changes immediately
+                self.setup_modern_styles()
+                self.update_calendar_display()
+                self.update_calendar_legend()  # Update legend with new color
                 
                 dialog.destroy()
                 messagebox.showinfo("Settings Saved", "✅ Settings have been updated and saved.")
@@ -1949,26 +1994,38 @@ class ModernTravelCalendar:
         self.trips_for_month_label.pack()
         
         # Legend
-        legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
-        legend_frame.pack(fill=tk.X, pady=(20, 0))
+        self.legend_frame = tk.Frame(calendar_frame, bg=self.colors['surface'])
+        self.legend_frame.pack(fill=tk.X, pady=(20, 0))
         
-        tk.Label(legend_frame, text="Legend:", 
+        # Initialize the legend
+        self.update_calendar_legend()
+    
+    def update_calendar_legend(self):
+        """Update the calendar legend with current color settings"""
+        # Clear existing legend items
+        for widget in self.legend_frame.winfo_children():
+            widget.destroy()
+        
+        tk.Label(self.legend_frame, text="Legend:", 
                 font=('Segoe UI', 10, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
         
+        # Get the user's selected today color
+        today_color = self.get_today_color_hex(self.validation_settings.get('today_color', 'Blue'))
+        
         legend_items = [
-            ("🏠 No Travel", self.colors['surface']),
-            ("📅 Today", self.colors['surface']),  # Updated: normal background for today with blue text
-            ("✈️ Travel Days", self.colors['accent']),
-            ("📍 Selected", self.colors['warning'])
+            ("🏠 No Travel", self.colors['surface'], self.colors['text']),
+            ("📅 Today", self.colors['surface'], today_color),  # Use user-selected color for today
+            ("✈️ Travel Days", self.colors['accent'], 'white'),
+            ("📍 Selected", self.colors['warning'], self.colors['text'])
         ]
         
-        for text, color in legend_items:
-            legend_item = tk.Label(legend_frame, text=text,
+        for text, bg_color, fg_color in legend_items:
+            legend_item = tk.Label(self.legend_frame, text=text,
                                   font=('Segoe UI', 9),
-                                  bg=color,
-                                  fg=self.colors['primary'] if text == "📅 Today" else ('white' if color != self.colors['surface'] else self.colors['text']),  # Blue text for today
+                                  bg=bg_color,
+                                  fg=fg_color,
                                   padx=8, pady=4,
                                   relief='solid', bd=1)
             legend_item.pack(side=tk.LEFT, padx=(10, 0))
