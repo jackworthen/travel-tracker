@@ -270,7 +270,7 @@ Your data is automatically stored in OS-appropriate locations:
 
 ## 📤 Export File Format
 
-Exported CSV files include the following columns:
+Exported data files include the following columns:
 - **Departure Date** - Trip start date (MM-DD-YYYY format)
 - **Return Date** - Trip end date (MM-DD-YYYY format)  
 - **Days** - Total trip duration (calculated automatically)
