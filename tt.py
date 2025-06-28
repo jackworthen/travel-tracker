@@ -3603,15 +3603,15 @@ class ModernTravelCalendar:
         
         # Unique Locations (column 4)
         locations_count = len(set(overall_data['location_counts'].keys()))
-        unique_card = tk.Frame(overall_stats_frame, bg='#f59e0b', relief='solid', bd=0, padx=16, pady=12)
+        unique_card = tk.Frame(overall_stats_frame, bg=self.colors['accent'], relief='solid', bd=0, padx=16, pady=12)
         unique_card.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=3)
         
         tk.Label(unique_card, text="🌍", font=('Segoe UI', 16), 
-                bg='#f59e0b', fg='white').pack()
+                bg=self.colors['accent'], fg='white').pack()
         tk.Label(unique_card, text=str(locations_count), 
-                font=('Segoe UI', 20, 'bold'), bg='#f59e0b', fg='white').pack()
+                font=('Segoe UI', 20, 'bold'), bg=self.colors['accent'], fg='white').pack()
         tk.Label(unique_card, text="Unique Locations", font=('Segoe UI', 9),
-                bg='#f59e0b', fg='white').pack()
+                bg=self.colors['accent'], fg='white').pack()
         
         # Peak Travel Month (column 5)
         peak_month_card = tk.Frame(overall_stats_frame, bg='#e11d48', relief='solid', bd=0, padx=16, pady=12)
