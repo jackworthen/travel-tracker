@@ -286,21 +286,6 @@ Departure Date,Return Date,Days,Location,Notes
 
 ---
 
-## 🔧 Customization
-
-The application offers extensive customization through the four-tab Settings panel:
-
-- **Date Overlap Control**: Choose whether to allow overlapping travel dates with smart conflict resolution
-- **Future/Past Warnings**: Configure intelligent thresholds for date warnings
-- **Text Input Limits**: Set maximum lengths for location names and notes
-- **Report Defaults**: Configure which trip types show by default and default year filter
-- **Export Preferences**: Choose delimiter and default save location
-- **Validation Behavior**: Adjust how strict the validation system should be
-
-All settings are automatically saved and restored between sessions, with immediate visual feedback.
-
----
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
