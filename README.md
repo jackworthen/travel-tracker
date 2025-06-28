@@ -286,46 +286,6 @@ Departure Date,Return Date,Days,Location,Notes
 
 ---
 
-## 🛠️ Technical Details
-
-- **Built with**: Python 3.7+ and tkinter
-- **Data Storage**: JSON format for easy backup and portability
-- **Export Format**: CSV with configurable delimiters for maximum compatibility
-- **UI Framework**: Modern ttk styling with custom themes and professional design
-- **Architecture**: Object-oriented design with comprehensive validation system
-- **Cross-platform**: Runs on Windows, macOS, and Linux with OS-specific optimizations
-
-### Advanced Search Features
-- **Multi-field search** across locations, dates, and notes
-- **Real-time filtering** with instant results as you type
-- **Case-insensitive matching** for flexible searching
-- **Placeholder text guidance** for better user experience
-- **Integrated with existing filters** for powerful query combinations
-
-### Enhanced Validation Features
-- **Date format validation** with support for multiple international formats
-- **Intelligent date warnings** with precise day/year calculations
-- **Date range validation** preventing impossible date combinations
-- **Smart overlap detection** with user-configurable behavior and choice dialogs
-- **Input sanitization** for location and notes fields
-- **Customizable warning thresholds** for unusual date ranges
-
-### Export System Features
-- **Flexible delimiter support** for international compatibility
-- **Real-time filtering integration** - exports match current view exactly
-- **UTF-8 encoding** for international character support
-- **Configurable output location** with directory validation
-- **Error handling** with informative user feedback
-
-### Analytics Dashboard Features
-- **Year-specific analysis** for both past and future travel
-- **Comprehensive metrics** including trip extremes and weekend day tracking
-- **Overall statistics** with travel span and most traveled year identification
-- **Visual data presentation** with color-coded cards and modern styling
-- **Flexible year selection** for detailed comparative analysis
-
----
-
 ## 🔧 Customization
 
 The application offers extensive customization through the four-tab Settings panel:
