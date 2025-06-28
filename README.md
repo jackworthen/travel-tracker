@@ -4,7 +4,7 @@
 
 *Beautiful • Modern • Feature-Rich*
 
-[✨ Features](#-features) • [🚀 Quick Start](#-quick-start) • [📸 Screenshots](#-screenshots) • [⚙️ Settings](#️-settings) • [🤝 Contributing](#-contributing)
+[✨ Features](#-features) • [🚀 Quick Start](#-quick-start) • [⚙️ Settings](#️-settings)
 
 ---
 
