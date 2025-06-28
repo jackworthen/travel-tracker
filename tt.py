@@ -3213,7 +3213,7 @@ class ModernTravelCalendar:
         return sorted(future_years)  # Earliest first
     
     def calculate_year_specific_analytics(self, selected_past_year, selected_future_year):
-        """Calculate analytics for specific years"""
+        """Calculate analytics for specific years - FIXED: No more double counting"""
         current_date = datetime.now()
         current_year = current_date.year
         
@@ -3299,11 +3299,12 @@ class ModernTravelCalendar:
                         days_in_year = (overlap_end - overlap_start).days + 1
                         analytics['overall']['year_travel_days'][year] = analytics['overall']['year_travel_days'].get(year, 0) + days_in_year
                 
-                # Check if trip overlaps with selected past year and has started
+                # FIXED: Check if trip overlaps with selected past year and has already happened (past travel only)
                 past_year_overlap = (start_date <= past_year_end and end_date >= past_year_start and start_date <= current_date)
                 
-                # Check if trip overlaps with selected future year and hasn't ended yet
-                future_year_overlap = (start_date <= future_year_end and end_date >= future_year_start and end_date >= current_date)
+                # FIXED: Check if trip overlaps with selected future year and is future travel only (from tomorrow onwards)
+                tomorrow = current_date + timedelta(days=1)
+                future_year_overlap = (start_date <= future_year_end and end_date >= future_year_start and end_date >= tomorrow)
                 
                 # NEW: Check if trip overlaps with selected future year (including both past and future travel in that year)
                 future_year_total_overlap = (start_date <= future_year_end and end_date >= future_year_start)
@@ -3337,8 +3338,8 @@ class ModernTravelCalendar:
                     analytics['future']['locations'].add(location)
                     analytics['future']['trip_lengths'].append(trip_length)
                     
-                    # Calculate days within the selected future year
-                    overlap_start = max(start_date, future_year_start)
+                    # FIXED: Calculate days within the selected future year that are actually in the future (from tomorrow onwards)
+                    overlap_start = max(start_date, future_year_start, tomorrow)
                     overlap_end = min(end_date, future_year_end)
                     
                     if overlap_start <= overlap_end:
