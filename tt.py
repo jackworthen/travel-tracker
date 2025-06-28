@@ -86,7 +86,10 @@ class ModernTravelCalendar:
             # Export settings
             'export_file_type': 'CSV',  # Options: 'CSV', 'TXT', 'JSON', 'XML'
             'export_delimiter': ',',  # Default to comma
-            'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home())  # Default to Downloads or Home folder
+            'export_directory': str(Path.home() / 'Downloads') if (Path.home() / 'Downloads').exists() else str(Path.home()),  # Default to Downloads or Home folder
+            # Date format settings
+            'entry_date_format': 'MM/DD/YYYY',  # Format for New Travel Entry fields
+            'report_date_format': 'MM-DD-YYYY'  # Format for Travel Records display
         }
         self.load_config()  # Load saved settings from config file
         
@@ -106,36 +109,96 @@ class ModernTravelCalendar:
             return 0
     
     def format_date_for_display(self, date_str: str) -> str:
-        """Convert YYYY-MM-DD format to MM-DD-YYYY for display in reports"""
+        """Convert YYYY-MM-DD format to user-selected display format for reports"""
         try:
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-            return date_obj.strftime('%m-%d-%Y')
+            format_setting = self.validation_settings.get('report_date_format', 'MM-DD-YYYY')
+            
+            if format_setting == 'MM/DD/YYYY':
+                return date_obj.strftime('%m/%d/%Y')
+            elif format_setting == 'MM-DD-YYYY':
+                return date_obj.strftime('%m-%d-%Y')
+            elif format_setting == 'Month DD, YYYY':
+                return date_obj.strftime('%B %d, %Y')
+            elif format_setting == 'Month-DD-YYYY':
+                return date_obj.strftime('%B-%d-%Y')
+            elif format_setting == 'DD-MM-YYYY':
+                return date_obj.strftime('%d-%m-%Y')
+            else:
+                # Fallback to default
+                return date_obj.strftime('%m-%d-%Y')
         except ValueError:
             return date_str  # Return original if parsing fails
     
     def format_date_for_entry(self, date_str: str) -> str:
-        """Convert YYYY-MM-DD format to MM/DD/YYYY for entry fields"""
+        """Convert YYYY-MM-DD format to user-selected entry format for input fields"""
         try:
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-            return date_obj.strftime('%m/%d/%Y')
+            format_setting = self.validation_settings.get('entry_date_format', 'MM/DD/YYYY')
+            
+            if format_setting == 'MM/DD/YYYY':
+                return date_obj.strftime('%m/%d/%Y')
+            elif format_setting == 'MM-DD-YYYY':
+                return date_obj.strftime('%m-%d-%Y')
+            elif format_setting == 'Month DD, YYYY':
+                return date_obj.strftime('%B %d, %Y')
+            elif format_setting == 'Month-DD-YYYY':
+                return date_obj.strftime('%B-%d-%Y')
+            elif format_setting == 'DD-MM-YYYY':
+                return date_obj.strftime('%d-%m-%Y')
+            else:
+                # Fallback to default
+                return date_obj.strftime('%m/%d/%Y')
         except ValueError:
             return date_str  # Return original if parsing fails
     
     def parse_display_date_to_storage(self, date_str: str) -> str:
-        """Convert MM-DD-YYYY display format back to YYYY-MM-DD storage format"""
+        """Convert user-selected display format back to YYYY-MM-DD storage format"""
         try:
-            date_obj = datetime.strptime(date_str, '%m-%d-%Y')
-            return date_obj.strftime('%Y-%m-%d')
-        except ValueError:
-            return date_str  # Return original if parsing fails
+            # Try multiple formats based on what the user might have selected
+            formats = [
+                '%m/%d/%Y',     # MM/DD/YYYY
+                '%m-%d-%Y',     # MM-DD-YYYY
+                '%B %d, %Y',    # Month DD, YYYY
+                '%B-%d-%Y',     # Month-DD-YYYY
+                '%d-%m-%Y',     # DD-MM-YYYY
+                '%Y-%m-%d'      # Storage format (fallback)
+            ]
+            
+            for fmt in formats:
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    return date_obj.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            
+            return date_str  # Return original if all parsing fails
+        except:
+            return date_str
     
     def parse_entry_date_to_storage(self, date_str: str) -> str:
-        """Convert MM/DD/YYYY entry format back to YYYY-MM-DD storage format"""
+        """Convert user-selected entry format back to YYYY-MM-DD storage format"""
         try:
-            date_obj = datetime.strptime(date_str, '%m/%d/%Y')
-            return date_obj.strftime('%Y-%m-%d')
-        except ValueError:
-            return date_str  # Return original if parsing fails
+            # Try multiple formats based on what the user might have selected
+            formats = [
+                '%m/%d/%Y',     # MM/DD/YYYY
+                '%m-%d-%Y',     # MM-DD-YYYY
+                '%B %d, %Y',    # Month DD, YYYY
+                '%B-%d-%Y',     # Month-DD-YYYY
+                '%d-%m-%Y',     # DD-MM-YYYY
+                '%Y-%m-%d'      # Storage format (fallback)
+            ]
+            
+            for fmt in formats:
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    return date_obj.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            
+            return date_str  # Return original if all parsing fails
+        except:
+            return date_str
     
     def get_data_directory(self):
         """Get the appropriate data directory for the current OS"""
@@ -259,8 +322,17 @@ class ModernTravelCalendar:
         
         date_string = date_string.strip()
         
-        # Try multiple date formats - Updated to prioritize MM/DD/YYYY for entry fields
-        formats = ['%m/%d/%Y', '%m-%d-%Y', '%Y-%m-%d', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']
+        # Try multiple date formats - Updated to include all supported formats
+        formats = [
+            '%m/%d/%Y',     # MM/DD/YYYY
+            '%m-%d-%Y',     # MM-DD-YYYY  
+            '%B %d, %Y',    # Month DD, YYYY
+            '%B-%d-%Y',     # Month-DD-YYYY
+            '%d-%m-%Y',     # DD-MM-YYYY
+            '%Y-%m-%d',     # YYYY-MM-DD (storage format)
+            '%d/%m/%Y',     # DD/MM/YYYY (additional common format)
+            '%Y/%m/%d'      # YYYY/MM/DD (additional format)
+        ]
         
         for fmt in formats:
             try:
@@ -278,7 +350,7 @@ class ModernTravelCalendar:
             except ValueError:
                 continue
         
-        return False, None, f"Invalid date format. Please use MM/DD/YYYY, MM-DD-YYYY, YYYY-MM-DD, or DD/MM/YYYY"
+        return False, None, f"Invalid date format. Please use the selected format or common formats like MM/DD/YYYY, MM-DD-YYYY, Month DD, YYYY, etc."
     
     def validate_date_range(self, start_date: datetime, end_date: datetime) -> Tuple[bool, str]:
         """
@@ -680,7 +752,64 @@ class ModernTravelCalendar:
         self.root.wait_window(dialog)
         return result['continue']
     
+    def get_date_format_options(self):
+        """Get list of available date format options with current date examples"""
+        current_date = datetime.now()
+        
+        formats = [
+            ('MM/DD/YYYY', current_date.strftime('%m/%d/%Y')),
+            ('MM-DD-YYYY', current_date.strftime('%m-%d-%Y')),
+            ('Month DD, YYYY', current_date.strftime('%B %d, %Y')),
+            ('Month-DD-YYYY', current_date.strftime('%B-%d-%Y')),
+            ('DD-MM-YYYY', current_date.strftime('%d-%m-%Y'))
+        ]
+        
+        return formats
+    
+    def get_format_display_string(self, format_name, example):
+        """Get display string for format dropdown - just return the example"""
+        return example
+    
+    def extract_format_name_from_display(self, display_string):
+        """Extract format name from display string - now we need to map back from example"""
+        current_date = datetime.now()
+        format_mapping = {
+            current_date.strftime('%m/%d/%Y'): 'MM/DD/YYYY',
+            current_date.strftime('%m-%d-%Y'): 'MM-DD-YYYY',
+            current_date.strftime('%B %d, %Y'): 'Month DD, YYYY',
+            current_date.strftime('%B-%d-%Y'): 'Month-DD-YYYY',
+            current_date.strftime('%d-%m-%Y'): 'DD-MM-YYYY'
+        }
+        return format_mapping.get(display_string, 'MM/DD/YYYY')
+    
     def get_default_export_directory(self):
+        """Get the default export directory, falling back to safe alternatives"""
+        try:
+            # Try the user's configured directory first
+            configured_dir = Path(self.validation_settings['export_directory'])
+            if configured_dir.exists() and configured_dir.is_dir():
+                return str(configured_dir)
+        except:
+            pass
+        
+        # Try common directories as fallbacks
+        fallback_dirs = [
+            Path.home() / 'Documents',
+            Path.home() / 'Downloads', 
+            Path.home() / 'Desktop',
+            Path.home(),
+            Path.cwd()
+        ]
+        
+        for directory in fallback_dirs:
+            try:
+                if directory.exists() and directory.is_dir():
+                    return str(directory)
+            except:
+                continue
+        
+        # Last resort - current working directory
+        return str(Path.cwd())
         """Get the default export directory, falling back to safe alternatives"""
         try:
             # Try the user's configured directory first
@@ -1183,7 +1312,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x520")  # Increased height for file type setting
+        dialog.geometry("400x580")  # Increased height for date format settings
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1204,89 +1333,73 @@ class ModernTravelCalendar:
         notebook = ttk.Notebook(main_frame)
         notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 20))
         
-        # ========== VALIDATION TAB ==========
-        validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
-        notebook.add(validation_tab, text="Validation")
+        # Get format options with current date examples (needed for multiple tabs)
+        format_options = self.get_date_format_options()
+        format_display_options = [self.get_format_display_string(name, example) for name, example in format_options]
         
-        validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
-        validation_content.pack(fill=tk.BOTH, expand=True)
+        # ========== INPUT TAB (moved to first) ==========
+        input_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(input_tab, text="Input")
         
-        # Allow overlaps setting
-        settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
-        tk.Checkbutton(validation_content, text="Allow Overlapping Dates",
-                      variable=settings_vars['allow_overlaps'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
+        input_content = tk.Frame(input_tab, bg=self.colors['surface'], padx=20, pady=20)
+        input_content.pack(fill=tk.BOTH, expand=True)
         
-        # Future date warnings
-        settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
+        # Date format setting for entry fields
+        date_format_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        date_format_frame.pack(fill=tk.X, pady=(0, 20))
         
-        def toggle_future_entry():
-            """Enable/disable future days entry based on checkbox state"""
-            if settings_vars['warn_future_dates'].get():
-                future_entry.config(state='normal')
-            else:
-                future_entry.config(state='disabled')
-        
-        tk.Checkbutton(validation_content, text="Limit Future Dates",
-                      variable=settings_vars['warn_future_dates'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11),
-                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 10))
-        
-        # Future days setting - horizontal layout
-        future_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
-        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 20))
-        
-        tk.Label(future_days_frame, text="Future Limit:",
-                font=('Segoe UI', 10),
-                fg=self.colors['text_light'],
+        tk.Label(date_format_frame, text="Entry Date Format:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
         
-        settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
-        future_entry = tk.Entry(future_days_frame, textvariable=settings_vars['future_warning_days'],
-                               width=10, font=('Segoe UI', 10))
-        future_entry.pack(side=tk.LEFT, padx=(10, 0))
+        settings_vars['entry_date_format'] = tk.StringVar()
+        # Find current setting and set display value - now using just the example
+        current_entry_format = self.validation_settings['entry_date_format']
+        current_entry_display = None
+        for name, example in format_options:
+            if name == current_entry_format:
+                current_entry_display = example
+                break
+        if current_entry_display is None:
+            current_entry_display = format_display_options[0]  # Default to first option example
         
-        # Set initial state of future entry
-        if not settings_vars['warn_future_dates'].get():
-            future_entry.config(state='disabled')
+        settings_vars['entry_date_format'].set(current_entry_display)
         
-        # Past date warnings
-        settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
+        entry_format_combo = ttk.Combobox(date_format_frame, textvariable=settings_vars['entry_date_format'],
+                                         values=format_display_options,
+                                         state="readonly", width=20, font=('Segoe UI', 10))
+        entry_format_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        def toggle_past_entry():
-            """Enable/disable past days entry based on checkbox state"""
-            if settings_vars['warn_past_dates'].get():
-                past_entry.config(state='normal')
-            else:
-                past_entry.config(state='disabled')
+        # Location length - horizontal layout
+        location_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        location_frame.pack(fill=tk.X, pady=(0, 20))
         
-        tk.Checkbutton(validation_content, text="Limit Past Dates",
-                      variable=settings_vars['warn_past_dates'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11),
-                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 10))
-        
-        # Past days setting - horizontal layout
-        past_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
-        past_days_frame.pack(fill=tk.X, padx=(20, 0))
-        
-        tk.Label(past_days_frame, text="Past Limit:",
-                font=('Segoe UI', 10),
-                fg=self.colors['text_light'],
+        tk.Label(location_frame, text="Max. Location Length:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
         
-        settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
-        past_entry = tk.Entry(past_days_frame, textvariable=settings_vars['past_warning_days'],
-                             width=10, font=('Segoe UI', 10))
-        past_entry.pack(side=tk.LEFT, padx=(10, 0))
+        settings_vars['max_location_length'] = tk.StringVar(value=str(self.validation_settings['max_location_length']))
+        loc_entry = tk.Entry(location_frame, textvariable=settings_vars['max_location_length'],
+                            width=10, font=('Segoe UI', 10))
+        loc_entry.pack(side=tk.LEFT, padx=(10, 0))
         
-        # Set initial state of past entry
-        if not settings_vars['warn_past_dates'].get():
-            past_entry.config(state='disabled')
+        # Comment length - horizontal layout
+        comment_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        comment_frame.pack(fill=tk.X)
         
-        # ========== REPORT TAB ==========
+        tk.Label(comment_frame, text="Max. Notes Length:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['max_comment_length'] = tk.StringVar(value=str(self.validation_settings['max_comment_length']))
+        comment_entry = tk.Entry(comment_frame, textvariable=settings_vars['max_comment_length'],
+                                width=10, font=('Segoe UI', 10))
+        comment_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # ========== REPORT TAB (moved to second) ==========
         report_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(report_tab, text="Report")
         
@@ -1326,7 +1439,7 @@ class ModernTravelCalendar:
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 10))
         
         year_filter_frame = tk.Frame(report_content, bg=self.colors['surface'])
-        year_filter_frame.pack(fill=tk.X)
+        year_filter_frame.pack(fill=tk.X, pady=(0, 20))
         
         tk.Label(year_filter_frame, text="Default Year:",
                 font=('Segoe UI', 11),
@@ -1339,42 +1452,39 @@ class ModernTravelCalendar:
                                         state="readonly", width=15, font=('Segoe UI', 10))
         year_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        # ========== INPUT TAB ==========
-        input_tab = tk.Frame(notebook, bg=self.colors['surface'])
-        notebook.add(input_tab, text="Input")
+        # Date format setting for report display (moved to bottom)
+        tk.Label(report_content, text="Report Date Format",
+                font=('Segoe UI', 11),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 10))
         
-        input_content = tk.Frame(input_tab, bg=self.colors['surface'], padx=20, pady=20)
-        input_content.pack(fill=tk.BOTH, expand=True)
+        report_date_format_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        report_date_format_frame.pack(fill=tk.X)
         
-        # Location length - horizontal layout
-        location_frame = tk.Frame(input_content, bg=self.colors['surface'])
-        location_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        tk.Label(location_frame, text="Max. Location Length:",
+        tk.Label(report_date_format_frame, text="Date Format:",
                 font=('Segoe UI', 11),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(side=tk.LEFT)
         
-        settings_vars['max_location_length'] = tk.StringVar(value=str(self.validation_settings['max_location_length']))
-        loc_entry = tk.Entry(location_frame, textvariable=settings_vars['max_location_length'],
-                            width=10, font=('Segoe UI', 10))
-        loc_entry.pack(side=tk.LEFT, padx=(10, 0))
+        settings_vars['report_date_format'] = tk.StringVar()
+        # Find current setting and set display value - now using just the example
+        current_report_format = self.validation_settings['report_date_format']
+        current_report_display = None
+        for name, example in format_options:
+            if name == current_report_format:
+                current_report_display = example
+                break
+        if current_report_display is None:
+            current_report_display = format_display_options[1]  # Default to MM-DD-YYYY example
         
-        # Comment length - horizontal layout
-        comment_frame = tk.Frame(input_content, bg=self.colors['surface'])
-        comment_frame.pack(fill=tk.X)
+        settings_vars['report_date_format'].set(current_report_display)
         
-        tk.Label(comment_frame, text="Max. Notes Length:",
-                font=('Segoe UI', 11),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
+        report_format_combo = ttk.Combobox(report_date_format_frame, textvariable=settings_vars['report_date_format'],
+                                          values=format_display_options,
+                                          state="readonly", width=20, font=('Segoe UI', 10))
+        report_format_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        settings_vars['max_comment_length'] = tk.StringVar(value=str(self.validation_settings['max_comment_length']))
-        comment_entry = tk.Entry(comment_frame, textvariable=settings_vars['max_comment_length'],
-                                width=10, font=('Segoe UI', 10))
-        comment_entry.pack(side=tk.LEFT, padx=(10, 0))
-        
-        # ========== EXPORT TAB ==========
+        # ========== EXPORT TAB (moved to third) ==========
         export_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(export_tab, text="Export")
         
@@ -1474,6 +1584,88 @@ class ModernTravelCalendar:
                               command=browse_directory)
         browse_btn.pack(side=tk.RIGHT)
         
+        # ========== VALIDATION TAB (moved to last) ==========
+        validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(validation_tab, text="Validation")
+        
+        validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
+        validation_content.pack(fill=tk.BOTH, expand=True)
+        
+        # Allow overlaps setting
+        settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
+        tk.Checkbutton(validation_content, text="Allow Overlapping Dates",
+                      variable=settings_vars['allow_overlaps'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
+        
+        # Future date warnings
+        settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
+        
+        def toggle_future_entry():
+            """Enable/disable future days entry based on checkbox state"""
+            if settings_vars['warn_future_dates'].get():
+                future_entry.config(state='normal')
+            else:
+                future_entry.config(state='disabled')
+        
+        tk.Checkbutton(validation_content, text="Limit Future Dates",
+                      variable=settings_vars['warn_future_dates'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11),
+                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 10))
+        
+        # Future days setting - horizontal layout
+        future_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 20))
+        
+        tk.Label(future_days_frame, text="Future Limit:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
+        future_entry = tk.Entry(future_days_frame, textvariable=settings_vars['future_warning_days'],
+                               width=10, font=('Segoe UI', 10))
+        future_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Set initial state of future entry
+        if not settings_vars['warn_future_dates'].get():
+            future_entry.config(state='disabled')
+        
+        # Past date warnings
+        settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
+        
+        def toggle_past_entry():
+            """Enable/disable past days entry based on checkbox state"""
+            if settings_vars['warn_past_dates'].get():
+                past_entry.config(state='normal')
+            else:
+                past_entry.config(state='disabled')
+        
+        tk.Checkbutton(validation_content, text="Limit Past Dates",
+                      variable=settings_vars['warn_past_dates'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11),
+                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 10))
+        
+        # Past days setting - horizontal layout
+        past_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        past_days_frame.pack(fill=tk.X, padx=(20, 0))
+        
+        tk.Label(past_days_frame, text="Past Limit:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
+        past_entry = tk.Entry(past_days_frame, textvariable=settings_vars['past_warning_days'],
+                             width=10, font=('Segoe UI', 10))
+        past_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Set initial state of past entry
+        if not settings_vars['warn_past_dates'].get():
+            past_entry.config(state='disabled')
+        
         # Buttons
         buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
         buttons_frame.grid(row=1, column=0, pady=(20, 0))
@@ -1496,6 +1688,13 @@ class ModernTravelCalendar:
                 
                 # Update year filter default
                 self.validation_settings['default_year_filter'] = settings_vars['default_year_filter'].get()
+                
+                # Update date format settings - now using just the examples
+                entry_format_display = settings_vars['entry_date_format'].get()
+                report_format_display = settings_vars['report_date_format'].get()
+                
+                self.validation_settings['entry_date_format'] = self.extract_format_name_from_display(entry_format_display)
+                self.validation_settings['report_date_format'] = self.extract_format_name_from_display(report_format_display)
                 
                 # Update export settings
                 self.validation_settings['export_file_type'] = settings_vars['export_file_type'].get()
