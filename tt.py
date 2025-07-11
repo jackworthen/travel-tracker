@@ -83,6 +83,8 @@ class ModernTravelCalendar:
             'default_show_future': True,
             # Year filter default
             'default_year_filter': 'Current Year',  # Options: 'All Years', 'Current Year'
+            # Travel type filter default
+            'default_travel_type_filter': 'All',  # Options: 'All', 'Personal', 'Work'
             # Export settings
             'export_file_type': 'CSV',  # Options: 'CSV', 'TXT', 'JSON', 'XML'
             'export_delimiter': ',',  # Default to comma
@@ -879,8 +881,8 @@ class ModernTravelCalendar:
         with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile, delimiter=delimiter_char, quoting=csv.QUOTE_MINIMAL)
             
-            # Write header
-            writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
+            # Write header - now includes travel type
+            writer.writerow(['Departure Date', 'Return Date', 'Days', 'Location', 'Travel Type', 'Notes'])
             
             # Write data
             for record in filtered_records:
@@ -890,6 +892,7 @@ class ModernTravelCalendar:
                     self.format_date_for_display(record['end_date']),
                     str(days),
                     record['location'],
+                    record.get('travel_type', 'Personal'),  # Default to Personal for backward compatibility
                     record.get('comment', '')
                 ])
     
@@ -900,8 +903,8 @@ class ModernTravelCalendar:
         delimiter_char = self.validation_settings['export_delimiter']  # This is already ',' or '|'
         
         with open(file_path, 'w', encoding='utf-8') as txtfile:
-            # Write header
-            header = delimiter_char.join(['Departure Date', 'Return Date', 'Days', 'Location', 'Notes'])
+            # Write header - now includes travel type
+            header = delimiter_char.join(['Departure Date', 'Return Date', 'Days', 'Location', 'Travel Type', 'Notes'])
             txtfile.write(header + '\n')
             
             # Write data
@@ -916,6 +919,7 @@ class ModernTravelCalendar:
                     self.format_date_for_display(record['end_date']),
                     str(days),
                     record['location'],
+                    record.get('travel_type', 'Personal'),  # Default to Personal for backward compatibility
                     record.get('comment', '')
                 ])
                 # Strip any trailing newlines and add just one
@@ -933,6 +937,7 @@ class ModernTravelCalendar:
                 'return_date': self.format_date_for_display(record['end_date']),
                 'days': days,
                 'location': record['location'],
+                'travel_type': record.get('travel_type', 'Personal'),  # Default to Personal for backward compatibility
                 'notes': record.get('comment', '')
             }
             export_data.append(export_record)
@@ -964,6 +969,9 @@ class ModernTravelCalendar:
             location_elem = ET.SubElement(record_elem, 'location')
             location_elem.text = record['location']
             
+            travel_type_elem = ET.SubElement(record_elem, 'travel_type')
+            travel_type_elem.text = record.get('travel_type', 'Personal')  # Default to Personal for backward compatibility
+            
             notes_elem = ET.SubElement(record_elem, 'notes')
             notes_elem.text = record.get('comment', '')
         
@@ -976,7 +984,7 @@ class ModernTravelCalendar:
         """Export currently filtered travel records in the configured format"""
         # Check if we have the necessary references from the report window
         if not (hasattr(self, '_current_filter_vars') and hasattr(self, '_current_year_var') and 
-                hasattr(self, '_current_search_var')):
+                hasattr(self, '_current_search_var') and hasattr(self, '_current_travel_type_var')):
             messagebox.showerror("Export Error", "Please open the Travel Report window before exporting.")
             return
         
@@ -984,7 +992,8 @@ class ModernTravelCalendar:
         filtered_records = self.get_filtered_records(
             self._current_filter_vars, 
             self._current_year_var, 
-            self._current_search_var
+            self._current_search_var,
+            self._current_travel_type_var
         )
         
         if not filtered_records:
@@ -1037,7 +1046,7 @@ class ModernTravelCalendar:
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export records:\n{str(e)}")
     
-    def get_filtered_records(self, filter_vars, year_var=None, search_var=None):
+    def get_filtered_records(self, filter_vars, year_var=None, search_var=None, travel_type_var=None):
         """Get records that match the current filters (same logic as display filtering)"""
         # Get enabled filters
         enabled_filters = []
@@ -1059,6 +1068,11 @@ class ModernTravelCalendar:
                 selected_year = int(year_var.get())
             except:
                 pass
+        
+        # Get selected travel type
+        selected_travel_type = None
+        if travel_type_var and travel_type_var.get() != "All":
+            selected_travel_type = travel_type_var.get()
         
         # Get search text
         search_text = ""
@@ -1088,14 +1102,21 @@ class ModernTravelCalendar:
                 except:
                     continue
             
+            # Check travel type filter
+            if selected_travel_type is not None:
+                record_travel_type = record.get('travel_type', 'Personal')  # Default to Personal for backward compatibility
+                if record_travel_type != selected_travel_type:
+                    continue
+            
             # Check search filter
             if search_text:
-                # Search in location, dates, and comments
+                # Search in location, dates, comments, and travel type
                 searchable_text = (
                     record['location'].lower() + " " +
                     record['start_date'].lower() + " " +
                     record['end_date'].lower() + " " +
-                    record.get('comment', '').lower()
+                    record.get('comment', '').lower() + " " +
+                    record.get('travel_type', 'Personal').lower()
                 )
                 
                 if search_text not in searchable_text:
@@ -1334,7 +1355,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x580")  # Increased height for date format settings
+        dialog.geometry("400x640")  # Increased height for travel type filter setting
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1488,6 +1509,21 @@ class ModernTravelCalendar:
                                         values=["All Years", "Current Year"],
                                         state="readonly", width=15, font=('Segoe UI', 10))
         year_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Travel type filter default setting (NEW)
+        travel_type_filter_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        travel_type_filter_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(travel_type_filter_frame, text="Default Type:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['default_travel_type_filter'] = tk.StringVar(value=self.validation_settings['default_travel_type_filter'])
+        travel_type_filter_combo = ttk.Combobox(travel_type_filter_frame, textvariable=settings_vars['default_travel_type_filter'],
+                                               values=["All", "Personal", "Work"],
+                                               state="readonly", width=15, font=('Segoe UI', 10))
+        travel_type_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
         # Date format setting for report display (moved to bottom)
         tk.Label(report_content, text="Report Date Format",
@@ -1726,6 +1762,9 @@ class ModernTravelCalendar:
                 # Update year filter default
                 self.validation_settings['default_year_filter'] = settings_vars['default_year_filter'].get()
                 
+                # Update travel type filter default (NEW)
+                self.validation_settings['default_travel_type_filter'] = settings_vars['default_travel_type_filter'].get()
+                
                 # Update date format settings - now using just the examples
                 entry_format_display = settings_vars['entry_date_format'].get()
                 report_format_display = settings_vars['report_date_format'].get()
@@ -1875,14 +1914,38 @@ class ModernTravelCalendar:
                              command=self.clear_dates)
         clear_btn.grid(row=4, column=0, pady=(0, 20))
         
-        # Location section
-        tk.Label(entry_frame, text="Location", 
+        # Location and Travel Type section (side by side)
+        location_type_frame = tk.Frame(entry_frame, bg=self.colors['surface'])
+        location_type_frame.pack(fill=tk.X, pady=(0, 20))
+        location_type_frame.columnconfigure(0, weight=2)  # Location takes more space
+        location_type_frame.columnconfigure(1, weight=1)  # Travel Type takes less space
+        
+        # Location section (left side)
+        location_section = tk.Frame(location_type_frame, bg=self.colors['surface'])
+        location_section.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        tk.Label(location_section, text="Location", 
                 font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
         
-        self.location_entry = ttk.Combobox(entry_frame, style='Modern.TCombobox', font=('Segoe UI', 11))
-        self.location_entry.pack(fill=tk.X, pady=(0, 20))
+        self.location_entry = ttk.Combobox(location_section, style='Modern.TCombobox', font=('Segoe UI', 11))
+        self.location_entry.pack(fill=tk.X)
+        
+        # Travel Type section (right side)
+        travel_type_section = tk.Frame(location_type_frame, bg=self.colors['surface'])
+        travel_type_section.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        
+        tk.Label(travel_type_section, text="Type", 
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
+        
+        self.travel_type_entry = ttk.Combobox(travel_type_section, style='Modern.TCombobox', font=('Segoe UI', 11))
+        self.travel_type_entry['values'] = ['Personal', 'Work']
+        self.travel_type_entry.set('Work')  # Default to Work
+        self.travel_type_entry['state'] = 'readonly'  # Make it read-only so users can only select from the options
+        self.travel_type_entry.pack(fill=tk.X)
         
         # Comment section
         tk.Label(entry_frame, text="Notes", 
@@ -2063,7 +2126,12 @@ class ModernTravelCalendar:
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    # Ensure backward compatibility - add travel_type if missing
+                    for record in data:
+                        if 'travel_type' not in record:
+                            record['travel_type'] = 'Personal'  # Default to Personal for old records
+                    return data
             except Exception as e:
                 print(f"Error loading data: {e}")
                 return []
@@ -2412,6 +2480,12 @@ class ModernTravelCalendar:
             all_warnings.extend(location_warnings)
             location = cleaned_location
         
+        # === TRAVEL TYPE VALIDATION (NEW) ===
+        
+        travel_type = self.travel_type_entry.get()
+        if travel_type not in ['Personal', 'Work']:
+            all_errors.append("Please select a valid travel type (Personal or Work)")
+        
         # === COMMENT VALIDATION ===
         
         comment = self.comment_text.get(1.0, tk.END)
@@ -2441,6 +2515,7 @@ class ModernTravelCalendar:
             'start_date': start_date.strftime('%Y-%m-%d'),
             'end_date': end_date.strftime('%Y-%m-%d'),
             'location': location,
+            'travel_type': travel_type,  # NEW: Include travel type
             'comment': comment
         }
         
@@ -2465,10 +2540,10 @@ class ModernTravelCalendar:
         # Update year dropdown in report window if it's open
         if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
             hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
-            hasattr(self, '_current_search_var') and 
+            hasattr(self, '_current_search_var') and hasattr(self, '_current_travel_type_var') and
             self.report_window and self.report_window.winfo_exists()):
             self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
-                                     self._current_filter_vars, self._current_records_tree, self._current_search_var)
+                                     self._current_filter_vars, self._current_records_tree, self._current_search_var, self._current_travel_type_var)
         
         self.clear_form()
         
@@ -2477,6 +2552,7 @@ class ModernTravelCalendar:
     def clear_form(self):
         """Clear the form fields"""
         self.location_entry.delete(0, tk.END)
+        self.travel_type_entry.set('Work')  # Reset to default
         self.comment_text.delete(1.0, tk.END)
         self.clear_dates()
         # Reset edit mode
@@ -2508,7 +2584,7 @@ class ModernTravelCalendar:
                                   background='#fef3c7', 
                                   foreground='#d97706')
     
-    def update_records_display_filtered(self, records_tree, filter_vars, year_var=None, search_var=None):
+    def update_records_display_filtered(self, records_tree, filter_vars, year_var=None, search_var=None, travel_type_var=None):
         """Update the travel records display with filtering applied"""
         # Clear existing items
         for item in records_tree.get_children():
@@ -2538,6 +2614,11 @@ class ModernTravelCalendar:
             except:
                 pass
         
+        # Get selected travel type (NEW)
+        selected_travel_type = None
+        if travel_type_var and travel_type_var.get() != "All":
+            selected_travel_type = travel_type_var.get()
+        
         # Get search text
         search_text = ""
         if search_var:
@@ -2566,14 +2647,21 @@ class ModernTravelCalendar:
                 except:
                     continue
             
+            # Check travel type filter (NEW)
+            if selected_travel_type is not None:
+                record_travel_type = record.get('travel_type', 'Personal')  # Default to Personal for backward compatibility
+                if record_travel_type != selected_travel_type:
+                    continue
+            
             # Check search filter
             if search_text:
-                # Search in location, dates, and comments
+                # Search in location, dates, comments, and travel type
                 searchable_text = (
                     record['location'].lower() + " " +
                     record['start_date'].lower() + " " +
                     record['end_date'].lower() + " " +
-                    record.get('comment', '').lower()
+                    record.get('comment', '').lower() + " " +
+                    record.get('travel_type', 'Personal').lower()
                 )
                 
                 if search_text not in searchable_text:
@@ -2697,6 +2785,10 @@ class ModernTravelCalendar:
                 self.location_entry.delete(0, tk.END)
                 self.location_entry.insert(0, record['location'])
                 
+                # Set travel type (NEW)
+                travel_type = record.get('travel_type', 'Personal')  # Default to Personal for backward compatibility
+                self.travel_type_entry.set(travel_type)
+                
                 self.comment_text.delete(1.0, tk.END)
                 self.comment_text.insert(1.0, record.get('comment', ''))
                 
@@ -2721,7 +2813,7 @@ class ModernTravelCalendar:
                 messagebox.showinfo("Edit Mode", "✏️ Record loaded for editing. Calendar navigated to travel dates. Click 'Save Travel' to update.")
                 break
     
-    def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree, search_var=None):
+    def update_year_dropdown(self, year_combo, year_var, filter_vars, records_tree, search_var=None, travel_type_var=None):
         """Update the year dropdown with current available years"""
         # Get available years
         available_years = self.get_available_years()
@@ -2743,7 +2835,7 @@ class ModernTravelCalendar:
             year_var.set("All Years")
         
         # Refresh the records display with updated year filter
-        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
 
     def delete_record(self, records_tree, report_window=None):
         """Delete selected travel record from the report window"""
@@ -2786,9 +2878,9 @@ class ModernTravelCalendar:
             # Update year dropdown and records display
             if (hasattr(self, '_current_year_combo') and hasattr(self, '_current_year_var') and 
                 hasattr(self, '_current_filter_vars') and hasattr(self, '_current_records_tree') and
-                hasattr(self, '_current_search_var')):
+                hasattr(self, '_current_search_var') and hasattr(self, '_current_travel_type_var')):
                 self.update_year_dropdown(self._current_year_combo, self._current_year_var, 
-                                         self._current_filter_vars, self._current_records_tree, self._current_search_var)
+                                         self._current_filter_vars, self._current_records_tree, self._current_search_var, self._current_travel_type_var)
             else:
                 # Fallback: just update records display
                 self.update_records_display(records_tree)
@@ -2811,10 +2903,10 @@ class ModernTravelCalendar:
         
         # Use the stored filter variables from the report window if available
         if (hasattr(self, '_current_filter_vars') and hasattr(self, '_current_year_var') and 
-            hasattr(self, '_current_search_var')):
+            hasattr(self, '_current_search_var') and hasattr(self, '_current_travel_type_var')):
             # Use the filtered display method which now includes sorting logic
             self.update_records_display_filtered(records_tree, self._current_filter_vars, 
-                                                self._current_year_var, self._current_search_var)
+                                                self._current_year_var, self._current_search_var, self._current_travel_type_var)
         else:
             # Fallback - this shouldn't happen in normal operation
             self.update_records_display(records_tree)
@@ -3142,32 +3234,57 @@ class ModernTravelCalendar:
         # Search variable (define early so it's available in toggle button functions)
         search_var = tk.StringVar()
         
-        # Search field (first row - above Year and Status)
-        search_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
-        search_frame.pack(fill=tk.X, pady=(0, 15))
+        # Travel type variable (NEW)
+        travel_type_var = tk.StringVar()
         
-        tk.Label(search_frame, text="🔍 Search:", 
+        # Search and Travel Type fields (first row - above Year and Status)
+        search_type_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
+        search_type_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Search field (left side)
+        tk.Label(search_type_frame, text="🔍 Search:", 
                 font=('Segoe UI', 12, 'bold'),
                 fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 15))
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
         
         # Create a styled frame for the search entry
-        search_entry_frame = tk.Frame(search_frame, bg=self.colors['background'], 
+        search_entry_frame = tk.Frame(search_type_frame, bg=self.colors['background'], 
                                      relief='solid', bd=2, padx=2, pady=2)
-        search_entry_frame.pack(side=tk.LEFT)
+        search_entry_frame.pack(side=tk.LEFT, padx=(0, 30))
         
         # Search entry with enhanced styling
         search_entry = tk.Entry(search_entry_frame, textvariable=search_var,
                                font=('Segoe UI', 11),
-                               width=35,
+                               width=25,  # Reduced width to make room for travel type
                                bg=self.colors['surface'],
                                fg=self.colors['text'],
                                relief='flat', bd=0,
                                insertbackground=self.colors['primary'])
         search_entry.pack(padx=8, pady=6)
         
-        # Add placeholder text behavior
-        placeholder_text = "Search locations, dates, or notes..."
+        # Travel Type filter (right side, NEW)
+        tk.Label(search_type_frame, text="🧳 Type:", 
+                font=('Segoe UI', 12, 'bold'),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT, padx=(0, 10))
+        
+        travel_type_combo = ttk.Combobox(search_type_frame, textvariable=travel_type_var, 
+                                        style='Modern.TCombobox', 
+                                        font=('Segoe UI', 10),
+                                        width=12, state="readonly")
+        
+        # Populate travel type dropdown
+        travel_type_options = ["All", "Personal", "Work"]
+        travel_type_combo['values'] = travel_type_options
+        
+        # Set default based on user preference
+        default_travel_type = self.validation_settings.get('default_travel_type_filter', 'All')
+        travel_type_var.set(default_travel_type)
+        
+        travel_type_combo.pack(side=tk.LEFT)
+        
+        # Add placeholder text behavior for search
+        placeholder_text = "search locations, dates, or notes..."
         
         def on_search_focus_in(event):
             if search_var.get() == placeholder_text:
@@ -3186,7 +3303,11 @@ class ModernTravelCalendar:
             if search_var.get() == placeholder_text:
                 return
             # Filter records in real time
-            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
+        
+        def on_travel_type_change(event):
+            # Filter records when travel type changes
+            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
         
         # Set initial placeholder
         search_var.set(placeholder_text)
@@ -3196,8 +3317,9 @@ class ModernTravelCalendar:
         search_entry.bind('<FocusIn>', on_search_focus_in)
         search_entry.bind('<FocusOut>', on_search_focus_out)
         search_var.trace('w', on_search_change)
+        travel_type_combo.bind('<<ComboboxSelected>>', on_travel_type_change)
         
-        # Year and Status filters (second row - below Search)
+        # Year and Status filters (second row - below Search and Travel Type)
         year_status_frame = tk.Frame(filter_inner, bg=self.colors['surface'])
         year_status_frame.pack(fill=tk.X)
         
@@ -3218,7 +3340,7 @@ class ModernTravelCalendar:
                 # Update button appearance
                 update_button_appearance()
                 # Update records display
-                self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+                self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
             
             # Create the button
             btn = tk.Button(parent, text=text,
@@ -3300,6 +3422,7 @@ class ModernTravelCalendar:
         self._current_year_combo = year_combo
         self._current_year_var = year_var
         self._current_filter_vars = filter_vars
+        self._current_travel_type_var = travel_type_var  # NEW
         
         # Bind year selection change
         def on_year_change(event):
@@ -3324,7 +3447,7 @@ class ModernTravelCalendar:
                     pass
             
             # Update the records display
-            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+            self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
         
         year_combo.bind('<<ComboboxSelected>>', on_year_change)
         
@@ -3374,7 +3497,7 @@ class ModernTravelCalendar:
         self._current_search_var = search_var
         
         # Initial records display with filtering
-        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var)
+        self.update_records_display_filtered(records_tree, filter_vars, year_var, search_var, travel_type_var)
         
         # Action buttons
         buttons_frame = tk.Frame(main_container, bg=self.colors['background'])
@@ -3975,6 +4098,8 @@ class ModernTravelCalendar:
             delattr(self, '_current_records_tree')
         if hasattr(self, '_current_search_var'):
             delattr(self, '_current_search_var')
+        if hasattr(self, '_current_travel_type_var'):
+            delattr(self, '_current_travel_type_var')
         if hasattr(self, '_stats_labels'):
             delattr(self, '_stats_labels')
 
