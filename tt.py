@@ -1424,6 +1424,15 @@ class ModernTravelCalendar:
         input_content = tk.Frame(input_tab, bg=self.colors['surface'], padx=20, pady=20)
         input_content.pack(fill=tk.BOTH, expand=True)
         
+        # Entry Options Section Header
+        entry_header_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        entry_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(entry_header_frame, text="Set Default Entry Options",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W)
+        
         # Date format setting for entry fields
         date_format_frame = tk.Frame(input_content, bg=self.colors['surface'])
         date_format_frame.pack(fill=tk.X, pady=(0, 20))
@@ -1665,6 +1674,15 @@ class ModernTravelCalendar:
         export_content = tk.Frame(export_tab, bg=self.colors['surface'], padx=20, pady=20)
         export_content.pack(fill=tk.BOTH, expand=True)
         
+        # Export Configuration Section Header
+        export_header_frame = tk.Frame(export_content, bg=self.colors['surface'])
+        export_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(export_header_frame, text="Configure Export",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W)
+        
         # File type setting (NEW) - horizontal layout
         file_type_frame = tk.Frame(export_content, bg=self.colors['surface'])
         file_type_frame.pack(fill=tk.X, pady=(0, 20))
@@ -1764,6 +1782,15 @@ class ModernTravelCalendar:
         
         validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
         validation_content.pack(fill=tk.BOTH, expand=True)
+        
+        # Validation Rules Section Header
+        validation_header_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        validation_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(validation_header_frame, text="Set Validation Rules",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         # Allow overlaps setting
         settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
