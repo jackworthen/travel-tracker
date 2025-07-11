@@ -79,7 +79,7 @@ Whether you're a frequent flyer ✈️, weekend warrior 🏔️, or occasional v
 ## 🎨 Customization Options
 
 ### 🗓️ **Calendar Colors**
-Choose from **7 beautiful colors** for today's date:
+Choose from **7 beautiful colors** to customize the Calendar View:
 - 🔵 Blue (Classic)
 - 🟤 Brown (Earthy)
 - 🟢 Green (Natural)
