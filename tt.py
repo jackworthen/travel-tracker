@@ -1555,10 +1555,14 @@ class ModernTravelCalendar:
         report_content = tk.Frame(report_tab, bg=self.colors['surface'], padx=20, pady=20)
         report_content.pack(fill=tk.BOTH, expand=True)
         
-        tk.Label(report_content, text="Set Default Status Toggles",
-                font=('Segoe UI', 11),
+        # Status Toggles Section Header
+        status_header_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        status_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(status_header_frame, text="Set Default Status Toggles",
+                font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 20))
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         # Past toggle default
         settings_vars['default_show_past'] = tk.BooleanVar(value=self.validation_settings['default_show_past'])
@@ -1579,13 +1583,16 @@ class ModernTravelCalendar:
         tk.Checkbutton(report_content, text="Future Trips",
                       variable=settings_vars['default_show_future'],
                       bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 30))  # Extra space before next section
         
-        # Year filter default setting
-        tk.Label(report_content, text="Set Default Year Filter",
-                font=('Segoe UI', 11),
+        # Filter Options Section Header
+        year_header_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        year_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(year_header_frame, text="Set Default Filter Options",
+                font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 10))
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         year_filter_frame = tk.Frame(report_content, bg=self.colors['surface'])
         year_filter_frame.pack(fill=tk.X, pady=(0, 20))
@@ -1601,9 +1608,9 @@ class ModernTravelCalendar:
                                         state="readonly", width=15, font=('Segoe UI', 10))
         year_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        # Travel type filter default setting (NEW)
+        # Travel type filter default setting
         travel_type_filter_frame = tk.Frame(report_content, bg=self.colors['surface'])
-        travel_type_filter_frame.pack(fill=tk.X, pady=(0, 20))
+        travel_type_filter_frame.pack(fill=tk.X, pady=(0, 30))  # Extra space before next section
         
         tk.Label(travel_type_filter_frame, text="Default Type:",
                 font=('Segoe UI', 11),
@@ -1616,11 +1623,14 @@ class ModernTravelCalendar:
                                                state="readonly", width=15, font=('Segoe UI', 10))
         travel_type_filter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        # Date format setting for report display (moved to bottom)
-        tk.Label(report_content, text="Report Date Format",
-                font=('Segoe UI', 11),
+        # Date Format Section Header
+        date_format_header_frame = tk.Frame(report_content, bg=self.colors['surface'])
+        date_format_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(date_format_header_frame, text="Report Date Format",
+                font=('Segoe UI', 11, 'bold'),
                 fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 10))
+                bg=self.colors['surface']).pack(anchor=tk.W)
         
         report_date_format_frame = tk.Frame(report_content, bg=self.colors['surface'])
         report_date_format_frame.pack(fill=tk.X)
