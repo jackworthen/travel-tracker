@@ -93,7 +93,9 @@ class ModernTravelCalendar:
             'entry_date_format': 'MM/DD/YYYY',  # Format for New Travel Entry fields
             'report_date_format': 'MM-DD-YYYY',  # Format for Travel Records display
             # Calendar color settings
-            'today_color': 'Blue'  # Color for today's date on calendar
+            'today_color': 'Blue',  # Color for today's date on calendar
+            # Entry form defaults
+            'default_entry_travel_type': 'Work'  # Default travel type for new entries
         }
         self.load_config()  # Load saved settings from config file
         
@@ -1429,6 +1431,21 @@ class ModernTravelCalendar:
                                         state="readonly", width=15, font=('Segoe UI', 10))
         today_color_combo.pack(side=tk.LEFT, padx=(10, 0))
         
+        # Default Entry Travel Type setting (NEW)
+        default_type_frame = tk.Frame(input_content, bg=self.colors['surface'])
+        default_type_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(default_type_frame, text="Default Entry Type:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['default_entry_travel_type'] = tk.StringVar(value=self.validation_settings.get('default_entry_travel_type', 'Work'))
+        default_type_combo = ttk.Combobox(default_type_frame, textvariable=settings_vars['default_entry_travel_type'],
+                                         values=['Personal', 'Work'],
+                                         state="readonly", width=15, font=('Segoe UI', 10))
+        default_type_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
         # Location length - horizontal layout
         location_frame = tk.Frame(input_content, bg=self.colors['surface'])
         location_frame.pack(fill=tk.X, pady=(0, 20))
@@ -1474,14 +1491,14 @@ class ModernTravelCalendar:
         tk.Checkbutton(report_content, text="Past Trips",
                       variable=settings_vars['default_show_past'],
                       bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
         
         # Current toggle default
         settings_vars['default_show_current'] = tk.BooleanVar(value=self.validation_settings['default_show_current'])
         tk.Checkbutton(report_content, text="Current Trips",
                       variable=settings_vars['default_show_current'],
                       bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 15))
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
         
         # Future toggle default
         settings_vars['default_show_future'] = tk.BooleanVar(value=self.validation_settings['default_show_future'])
@@ -1775,6 +1792,13 @@ class ModernTravelCalendar:
                 # Update today's date color setting
                 self.validation_settings['today_color'] = settings_vars['today_color'].get()
                 
+                # Update default entry travel type setting (NEW)
+                self.validation_settings['default_entry_travel_type'] = settings_vars['default_entry_travel_type'].get()
+                
+                # Update the travel type entry field immediately (NEW)
+                if hasattr(self, 'travel_type_entry'):
+                    self.travel_type_entry.set(self.validation_settings['default_entry_travel_type'])
+                
                 # Update export settings
                 self.validation_settings['export_file_type'] = settings_vars['export_file_type'].get()
                 
@@ -1943,7 +1967,7 @@ class ModernTravelCalendar:
         
         self.travel_type_entry = ttk.Combobox(travel_type_section, style='Modern.TCombobox', font=('Segoe UI', 11))
         self.travel_type_entry['values'] = ['Personal', 'Work']
-        self.travel_type_entry.set('Work')  # Default to Work
+        self.travel_type_entry.set(self.validation_settings.get('default_entry_travel_type', 'Work'))  # Use configurable default
         self.travel_type_entry['state'] = 'readonly'  # Make it read-only so users can only select from the options
         self.travel_type_entry.pack(fill=tk.X)
         
@@ -2552,7 +2576,7 @@ class ModernTravelCalendar:
     def clear_form(self):
         """Clear the form fields"""
         self.location_entry.delete(0, tk.END)
-        self.travel_type_entry.set('Work')  # Reset to default
+        self.travel_type_entry.set(self.validation_settings.get('default_entry_travel_type', 'Work'))  # Reset to configurable default
         self.comment_text.delete(1.0, tk.END)
         self.clear_dates()
         # Reset edit mode
