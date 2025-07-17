@@ -866,33 +866,6 @@ class ModernTravelCalendar:
         
         # Last resort - current working directory
         return str(Path.cwd())
-        """Get the default export directory, falling back to safe alternatives"""
-        try:
-            # Try the user's configured directory first
-            configured_dir = Path(self.validation_settings['export_directory'])
-            if configured_dir.exists() and configured_dir.is_dir():
-                return str(configured_dir)
-        except:
-            pass
-        
-        # Try common directories as fallbacks
-        fallback_dirs = [
-            Path.home() / 'Documents',
-            Path.home() / 'Downloads', 
-            Path.home() / 'Desktop',
-            Path.home(),
-            Path.cwd()
-        ]
-        
-        for directory in fallback_dirs:
-            try:
-                if directory.exists() and directory.is_dir():
-                    return str(directory)
-            except:
-                continue
-        
-        # Last resort - current working directory
-        return str(Path.cwd())
     
     def get_file_extension_and_types(self, file_type):
         """Get file extension and file dialog types based on export file type"""
@@ -909,7 +882,7 @@ class ModernTravelCalendar:
     
     def export_to_csv(self, file_path, filtered_records):
         """Export records to CSV format"""
-        delimiter_char = self.validation_settings['export_delimiter']  # This is already ',' or '|'
+        delimiter_char = self.validation_settings['export_delimiter']
         
         with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile, delimiter=delimiter_char, quoting=csv.QUOTE_MINIMAL)
@@ -933,7 +906,7 @@ class ModernTravelCalendar:
         """Export records to TXT format (delimited text)"""
         import io
         
-        delimiter_char = self.validation_settings['export_delimiter']  # This is already ',' or '|'
+        delimiter_char = self.validation_settings['export_delimiter']
         
         with open(file_path, 'w', encoding='utf-8') as txtfile:
             # Write header - now includes travel type
@@ -1712,7 +1685,7 @@ class ModernTravelCalendar:
         # Bind file type change event
         file_type_combo.bind('<<ComboboxSelected>>', lambda e: toggle_delimiter_based_on_file_type())
         
-        # Delimiter setting - horizontal layout
+        # Delimiter setting - horizontal layout with updated options
         delimiter_frame = tk.Frame(export_content, bg=self.colors['surface'])
         delimiter_frame.pack(fill=tk.X, pady=(0, 20))
         
@@ -1724,14 +1697,23 @@ class ModernTravelCalendar:
         
         settings_vars['export_delimiter'] = tk.StringVar(value=self.validation_settings['export_delimiter'])
         delimiter_combo = ttk.Combobox(delimiter_frame, textvariable=settings_vars['export_delimiter'],
-                                      values=["Comma ( , )", "Pipe ( | )"],
+                                      values=["Comma ( , )", "Pipe ( | )", "Semicolon ( ; )", "Asterisk ( * )", "Tab ( \\t )"],
                                       state="readonly", width=15, font=('Segoe UI', 10))
         
         # Set the display value based on the stored delimiter
-        if self.validation_settings['export_delimiter'] == ',':
+        current_delimiter = self.validation_settings['export_delimiter']
+        if current_delimiter == ',':
             delimiter_combo.set("Comma ( , )")
-        else:
+        elif current_delimiter == '|':
             delimiter_combo.set("Pipe ( | )")
+        elif current_delimiter == ';':
+            delimiter_combo.set("Semicolon ( ; )")
+        elif current_delimiter == '*':
+            delimiter_combo.set("Asterisk ( * )")
+        elif current_delimiter == '\t':
+            delimiter_combo.set("Tab ( \\t )")
+        else:
+            delimiter_combo.set("Comma ( , )")  # Default fallback
         
         delimiter_combo.pack(side=tk.LEFT, padx=(10, 0))
         
@@ -1919,11 +1901,18 @@ class ModernTravelCalendar:
                 # Update export settings
                 self.validation_settings['export_file_type'] = settings_vars['export_file_type'].get()
                 
+                # Updated delimiter handling with new options
                 delimiter_choice = settings_vars['export_delimiter'].get()
-                if delimiter_choice == "Pipe ( | )":
-                    self.validation_settings['export_delimiter'] = '|'
-                elif delimiter_choice == "Comma ( , )":
+                if delimiter_choice == "Comma ( , )":
                     self.validation_settings['export_delimiter'] = ','
+                elif delimiter_choice == "Pipe ( | )":
+                    self.validation_settings['export_delimiter'] = '|'
+                elif delimiter_choice == "Semicolon ( ; )":
+                    self.validation_settings['export_delimiter'] = ';'
+                elif delimiter_choice == "Asterisk ( * )":
+                    self.validation_settings['export_delimiter'] = '*'
+                elif delimiter_choice == "Tab ( \\t )":
+                    self.validation_settings['export_delimiter'] = '\t'
                 else:
                     # Fallback to comma if somehow we get an unexpected value
                     self.validation_settings['export_delimiter'] = ','
