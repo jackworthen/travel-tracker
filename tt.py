@@ -2047,8 +2047,8 @@ class ModernTravelCalendar:
         # Location and Travel Type section (side by side)
         location_type_frame = tk.Frame(entry_frame, bg=self.colors['surface'])
         location_type_frame.pack(fill=tk.X, pady=(0, 20))
-        location_type_frame.columnconfigure(0, weight=2)  # Location takes more space
-        location_type_frame.columnconfigure(1, weight=1)  # Travel Type takes less space
+        location_type_frame.columnconfigure(0, weight=4)  # Location takes much more space
+        location_type_frame.columnconfigure(1, weight=1)  # Travel Type takes minimal space
         
         # Location section (left side)
         location_section = tk.Frame(location_type_frame, bg=self.colors['surface'])
@@ -2059,8 +2059,8 @@ class ModernTravelCalendar:
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
         
-        self.location_entry = ttk.Combobox(location_section, style='Modern.TCombobox', font=('Segoe UI', 11))
-        self.location_entry.pack(fill=tk.X)
+        self.location_entry = ttk.Combobox(location_section, style='Modern.TCombobox', font=('Segoe UI', 11), width=30)
+        self.location_entry.pack()
         
         # Travel Type section (right side)
         travel_type_section = tk.Frame(location_type_frame, bg=self.colors['surface'])
@@ -2071,11 +2071,11 @@ class ModernTravelCalendar:
                 fg=self.colors['text'],
                 bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
         
-        self.travel_type_entry = ttk.Combobox(travel_type_section, style='Modern.TCombobox', font=('Segoe UI', 11))
+        self.travel_type_entry = ttk.Combobox(travel_type_section, style='Modern.TCombobox', font=('Segoe UI', 11), width=12)
         self.travel_type_entry['values'] = ['Personal', 'Work']
         self.travel_type_entry.set(self.validation_settings.get('default_entry_travel_type', 'Work'))  # Use configurable default
         self.travel_type_entry['state'] = 'readonly'  # Make it read-only so users can only select from the options
-        self.travel_type_entry.pack(fill=tk.X)
+        self.travel_type_entry.pack()
         
         # Comment section
         tk.Label(entry_frame, text="Notes", 
