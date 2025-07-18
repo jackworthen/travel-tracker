@@ -1575,10 +1575,11 @@ class ModernTravelCalendar:
         today_color_frame = tk.Frame(input_content, bg=self.colors['surface'])
         today_color_frame.pack(fill=tk.X, pady=(0, 20))
         
-        tk.Label(today_color_frame, text="Today's Date:",
-                font=('Segoe UI', 11),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
+        today_color_label = tk.Label(today_color_frame, text="Today's Date:",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.get_today_color_hex(self.validation_settings.get('today_color', 'Blue')),
+                bg=self.colors['surface'])
+        today_color_label.pack(side=tk.LEFT)
         
         settings_vars['today_color'] = tk.StringVar(value=self.validation_settings.get('today_color', 'Blue'))
         today_color_combo = ttk.Combobox(today_color_frame, textvariable=settings_vars['today_color'],
@@ -1590,10 +1591,11 @@ class ModernTravelCalendar:
         travel_days_color_frame = tk.Frame(input_content, bg=self.colors['surface'])
         travel_days_color_frame.pack(fill=tk.X, pady=(0, 20))
         
-        tk.Label(travel_days_color_frame, text="Travel Days:",
-                font=('Segoe UI', 11),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
+        travel_days_color_label = tk.Label(travel_days_color_frame, text="Travel Days:",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.get_travel_days_color_hex(self.validation_settings.get('travel_days_color', 'Cyan')),
+                bg=self.colors['surface'])
+        travel_days_color_label.pack(side=tk.LEFT)
         
         settings_vars['travel_days_color'] = tk.StringVar(value=self.validation_settings.get('travel_days_color', 'Cyan'))
         travel_days_color_combo = ttk.Combobox(travel_days_color_frame, textvariable=settings_vars['travel_days_color'],
@@ -1605,16 +1607,38 @@ class ModernTravelCalendar:
         selected_dates_color_frame = tk.Frame(input_content, bg=self.colors['surface'])
         selected_dates_color_frame.pack(fill=tk.X)
         
-        tk.Label(selected_dates_color_frame, text="Selected Dates:",
-                font=('Segoe UI', 11),
-                fg=self.colors['text'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
+        selected_dates_color_label = tk.Label(selected_dates_color_frame, text="Selected Dates:",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.get_selected_dates_color_hex(self.validation_settings.get('selected_dates_color', 'Orange')),
+                bg=self.colors['surface'])
+        selected_dates_color_label.pack(side=tk.LEFT)
         
         settings_vars['selected_dates_color'] = tk.StringVar(value=self.validation_settings.get('selected_dates_color', 'Orange'))
         selected_dates_color_combo = ttk.Combobox(selected_dates_color_frame, textvariable=settings_vars['selected_dates_color'],
                                                  values=self.get_today_color_options(),  # Use same color options
                                                  state="readonly", width=15, font=('Segoe UI', 10))
         selected_dates_color_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Functions to update label colors when selections change
+        def update_today_color_label(event=None):
+            color_name = settings_vars['today_color'].get()
+            color_hex = self.get_today_color_hex(color_name)
+            today_color_label.config(fg=color_hex)
+        
+        def update_travel_days_color_label(event=None):
+            color_name = settings_vars['travel_days_color'].get()
+            color_hex = self.get_travel_days_color_hex(color_name)
+            travel_days_color_label.config(fg=color_hex)
+        
+        def update_selected_dates_color_label(event=None):
+            color_name = settings_vars['selected_dates_color'].get()
+            color_hex = self.get_selected_dates_color_hex(color_name)
+            selected_dates_color_label.config(fg=color_hex)
+        
+        # Bind the update functions to combobox selection events
+        today_color_combo.bind('<<ComboboxSelected>>', update_today_color_label)
+        travel_days_color_combo.bind('<<ComboboxSelected>>', update_travel_days_color_label)
+        selected_dates_color_combo.bind('<<ComboboxSelected>>', update_selected_dates_color_label)
         
         # ========== REPORT TAB (second) ==========
         report_tab = tk.Frame(notebook, bg=self.colors['surface'])
