@@ -1451,7 +1451,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x640")  # Increased height for backup section
+        dialog.geometry("400x640")  # Adjusted height
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1476,7 +1476,7 @@ class ModernTravelCalendar:
         format_options = self.get_date_format_options()
         format_display_options = [self.get_format_display_string(name, example) for name, example in format_options]
         
-        # ========== INPUT TAB (moved to first) ==========
+        # ========== INPUT TAB (first) ==========
         input_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(input_tab, text="Input")
         
@@ -1616,7 +1616,7 @@ class ModernTravelCalendar:
                                                  state="readonly", width=15, font=('Segoe UI', 10))
         selected_dates_color_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        # ========== REPORT TAB (moved to second) ==========
+        # ========== REPORT TAB (second) ==========
         report_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(report_tab, text="Report")
         
@@ -1726,7 +1726,98 @@ class ModernTravelCalendar:
                                           state="readonly", width=20, font=('Segoe UI', 10))
         report_format_combo.pack(side=tk.LEFT, padx=(10, 0))
         
-        # ========== EXPORT TAB (moved to third) ==========
+        # ========== VALIDATION TAB (third) ==========
+        validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(validation_tab, text="Validation")
+        
+        validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
+        validation_content.pack(fill=tk.BOTH, expand=True)
+        
+        # Validation Rules Section Header
+        validation_header_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        validation_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(validation_header_frame, text="Set Validation Rules",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W)
+        
+        # Allow overlaps setting
+        settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
+        tk.Checkbutton(validation_content, text="Allow Overlapping Dates",
+                      variable=settings_vars['allow_overlaps'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
+        
+        # Future date warnings
+        settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
+        
+        def toggle_future_entry():
+            """Enable/disable future days entry based on checkbox state"""
+            if settings_vars['warn_future_dates'].get():
+                future_entry.config(state='normal')
+            else:
+                future_entry.config(state='disabled')
+        
+        tk.Checkbutton(validation_content, text="Limit Future Dates",
+                      variable=settings_vars['warn_future_dates'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11),
+                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 10))
+        
+        # Future days setting - horizontal layout
+        future_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 20))
+        
+        tk.Label(future_days_frame, text="Future Limit:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
+        future_entry = tk.Entry(future_days_frame, textvariable=settings_vars['future_warning_days'],
+                               width=10, font=('Segoe UI', 10))
+        future_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Set initial state of future entry
+        if not settings_vars['warn_future_dates'].get():
+            future_entry.config(state='disabled')
+        
+        # Past date warnings
+        settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
+        
+        def toggle_past_entry():
+            """Enable/disable past days entry based on checkbox state"""
+            if settings_vars['warn_past_dates'].get():
+                past_entry.config(state='normal')
+            else:
+                past_entry.config(state='disabled')
+        
+        tk.Checkbutton(validation_content, text="Limit Past Dates",
+                      variable=settings_vars['warn_past_dates'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11),
+                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 10))
+        
+        # Past days setting - horizontal layout
+        past_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
+        past_days_frame.pack(fill=tk.X, padx=(20, 0))
+        
+        tk.Label(past_days_frame, text="Past Limit:",
+                font=('Segoe UI', 10),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(side=tk.LEFT)
+        
+        settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
+        past_entry = tk.Entry(past_days_frame, textvariable=settings_vars['past_warning_days'],
+                             width=10, font=('Segoe UI', 10))
+        past_entry.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Set initial state of past entry
+        if not settings_vars['warn_past_dates'].get():
+            past_entry.config(state='disabled')
+        
+        # ========== EXPORT TAB (fourth) ==========
         export_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(export_tab, text="Export")
         
@@ -1844,7 +1935,7 @@ class ModernTravelCalendar:
                               command=browse_directory)
         browse_btn.pack(side=tk.RIGHT)
         
-        # ========== BACKUP TAB (NEW) ==========
+        # ========== BACKUP TAB (last) ==========
         backup_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(backup_tab, text="Backup")
         
@@ -1932,97 +2023,6 @@ class ModernTravelCalendar:
                               relief='flat', bd=0, padx=20, pady=10,
                               command=perform_backup_action)
         backup_btn.pack()
-        
-        # ========== VALIDATION TAB (moved to last) ==========
-        validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
-        notebook.add(validation_tab, text="Validation")
-        
-        validation_content = tk.Frame(validation_tab, bg=self.colors['surface'], padx=20, pady=20)
-        validation_content.pack(fill=tk.BOTH, expand=True)
-        
-        # Validation Rules Section Header
-        validation_header_frame = tk.Frame(validation_content, bg=self.colors['surface'])
-        validation_header_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        tk.Label(validation_header_frame, text="Set Validation Rules",
-                font=('Segoe UI', 11, 'bold'),
-                fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(anchor=tk.W)
-        
-        # Allow overlaps setting
-        settings_vars['allow_overlaps'] = tk.BooleanVar(value=self.validation_settings['allow_overlaps'])
-        tk.Checkbutton(validation_content, text="Allow Overlapping Dates",
-                      variable=settings_vars['allow_overlaps'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 20))
-        
-        # Future date warnings
-        settings_vars['warn_future_dates'] = tk.BooleanVar(value=self.validation_settings['warn_future_dates'])
-        
-        def toggle_future_entry():
-            """Enable/disable future days entry based on checkbox state"""
-            if settings_vars['warn_future_dates'].get():
-                future_entry.config(state='normal')
-            else:
-                future_entry.config(state='disabled')
-        
-        tk.Checkbutton(validation_content, text="Limit Future Dates",
-                      variable=settings_vars['warn_future_dates'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11),
-                      command=toggle_future_entry).pack(anchor=tk.W, pady=(0, 10))
-        
-        # Future days setting - horizontal layout
-        future_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
-        future_days_frame.pack(fill=tk.X, padx=(20, 0), pady=(0, 20))
-        
-        tk.Label(future_days_frame, text="Future Limit:",
-                font=('Segoe UI', 10),
-                fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
-        
-        settings_vars['future_warning_days'] = tk.StringVar(value=str(self.validation_settings['future_warning_days']))
-        future_entry = tk.Entry(future_days_frame, textvariable=settings_vars['future_warning_days'],
-                               width=10, font=('Segoe UI', 10))
-        future_entry.pack(side=tk.LEFT, padx=(10, 0))
-        
-        # Set initial state of future entry
-        if not settings_vars['warn_future_dates'].get():
-            future_entry.config(state='disabled')
-        
-        # Past date warnings
-        settings_vars['warn_past_dates'] = tk.BooleanVar(value=self.validation_settings['warn_past_dates'])
-        
-        def toggle_past_entry():
-            """Enable/disable past days entry based on checkbox state"""
-            if settings_vars['warn_past_dates'].get():
-                past_entry.config(state='normal')
-            else:
-                past_entry.config(state='disabled')
-        
-        tk.Checkbutton(validation_content, text="Limit Past Dates",
-                      variable=settings_vars['warn_past_dates'],
-                      bg=self.colors['surface'],
-                      font=('Segoe UI', 11),
-                      command=toggle_past_entry).pack(anchor=tk.W, pady=(0, 10))
-        
-        # Past days setting - horizontal layout
-        past_days_frame = tk.Frame(validation_content, bg=self.colors['surface'])
-        past_days_frame.pack(fill=tk.X, padx=(20, 0))
-        
-        tk.Label(past_days_frame, text="Past Limit:",
-                font=('Segoe UI', 10),
-                fg=self.colors['text_light'],
-                bg=self.colors['surface']).pack(side=tk.LEFT)
-        
-        settings_vars['past_warning_days'] = tk.StringVar(value=str(self.validation_settings['past_warning_days']))
-        past_entry = tk.Entry(past_days_frame, textvariable=settings_vars['past_warning_days'],
-                             width=10, font=('Segoe UI', 10))
-        past_entry.pack(side=tk.LEFT, padx=(10, 0))
-        
-        # Set initial state of past entry
-        if not settings_vars['warn_past_dates'].get():
-            past_entry.config(state='disabled')
         
         # Buttons
         buttons_frame = tk.Frame(main_frame, bg=self.colors['background'])
