@@ -97,7 +97,11 @@ class ModernTravelCalendar:
             'travel_days_color': 'Cyan',  # Color for travel days on calendar
             'selected_dates_color': 'Orange',  # Color for selected dates on calendar
             # Entry form defaults
-            'default_entry_travel_type': 'Work'  # Default travel type for new entries
+            'default_entry_travel_type': 'Work',  # Default travel type for new entries
+            # Backup settings
+            'backup_travel_data': True,  # Default to backup travel data
+            'backup_config': True,  # Default to backup config
+            'backup_directory': str(Path.home() / 'Documents') if (Path.home() / 'Documents').exists() else str(Path.home())  # Default backup directory
         }
         self.load_config()  # Load saved settings from config file
         
@@ -317,6 +321,59 @@ class ModernTravelCalendar:
         except Exception as e:
             print(f"Error saving config: {e}")
             messagebox.showerror("Save Error", f"Could not save configuration: {e}")
+    
+    def perform_backup(self, backup_travel_data, backup_config, backup_directory):
+        """Perform backup of selected files to the specified directory"""
+        if not backup_travel_data and not backup_config:
+            messagebox.showwarning("Backup Warning", "No files selected for backup. Please select at least one file to backup.")
+            return
+        
+        # Validate backup directory
+        backup_path = Path(backup_directory)
+        if not backup_path.exists():
+            try:
+                backup_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                messagebox.showerror("Backup Error", f"Could not create backup directory:\n{backup_directory}\n\nError: {e}")
+                return
+        
+        if not backup_path.is_dir():
+            messagebox.showerror("Backup Error", f"Backup location is not a directory:\n{backup_directory}")
+            return
+        
+        # Generate timestamp for backup files
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_results = []
+        
+        try:
+            # Backup travel data if selected
+            if backup_travel_data:
+                if os.path.exists(self.data_file):
+                    backup_filename = f"travel_data_backup_{timestamp}.json"
+                    backup_filepath = backup_path / backup_filename
+                    shutil.copy2(self.data_file, backup_filepath)
+                    backup_results.append(f"✅ Travel data backed up to: {backup_filename}")
+                else:
+                    backup_results.append("⚠️ Travel data file not found - skipped")
+            
+            # Backup config if selected
+            if backup_config:
+                if os.path.exists(self.config_file):
+                    backup_filename = f"config_backup_{timestamp}.json"
+                    backup_filepath = backup_path / backup_filename
+                    shutil.copy2(self.config_file, backup_filepath)
+                    backup_results.append(f"✅ Settings backed up to: {backup_filename}")
+                else:
+                    backup_results.append("⚠️ Config file not found - skipped")
+            
+            # Show success message
+            if backup_results:
+                result_message = "Backup completed successfully!\n\n" + "\n".join(backup_results)
+                result_message += f"\n\nBackup location: {backup_directory}"
+                messagebox.showinfo("Backup Complete", result_message)
+            
+        except Exception as e:
+            messagebox.showerror("Backup Error", f"An error occurred during backup:\n{str(e)}")
     
     # ========== VALIDATION METHODS ==========
     
@@ -867,6 +924,35 @@ class ModernTravelCalendar:
         # Last resort - current working directory
         return str(Path.cwd())
     
+    def get_default_backup_directory(self):
+        """Get the default backup directory, falling back to safe alternatives"""
+        try:
+            # Try the user's configured directory first
+            configured_dir = Path(self.validation_settings['backup_directory'])
+            if configured_dir.exists() and configured_dir.is_dir():
+                return str(configured_dir)
+        except:
+            pass
+        
+        # Try common directories as fallbacks
+        fallback_dirs = [
+            Path.home() / 'Documents',
+            Path.home() / 'Downloads', 
+            Path.home() / 'Desktop',
+            Path.home(),
+            Path.cwd()
+        ]
+        
+        for directory in fallback_dirs:
+            try:
+                if directory.exists() and directory.is_dir():
+                    return str(directory)
+            except:
+                continue
+        
+        # Last resort - current working directory
+        return str(Path.cwd())
+    
     def get_file_extension_and_types(self, file_type):
         """Get file extension and file dialog types based on export file type"""
         if file_type == 'CSV':
@@ -1365,7 +1451,7 @@ class ModernTravelCalendar:
         """Show dialog for configuring validation settings"""
         dialog = tk.Toplevel(self.root)
         dialog.title("⚙️ Settings")
-        dialog.geometry("400x640")  # Increased height for travel type filter setting
+        dialog.geometry("400x640")  # Increased height for backup section
         dialog.configure(bg=self.colors['background'])
         dialog.transient(self.root)
         dialog.grab_set()
@@ -1758,6 +1844,95 @@ class ModernTravelCalendar:
                               command=browse_directory)
         browse_btn.pack(side=tk.RIGHT)
         
+        # ========== BACKUP TAB (NEW) ==========
+        backup_tab = tk.Frame(notebook, bg=self.colors['surface'])
+        notebook.add(backup_tab, text="Backup")
+        
+        backup_content = tk.Frame(backup_tab, bg=self.colors['surface'], padx=20, pady=20)
+        backup_content.pack(fill=tk.BOTH, expand=True)
+        
+        # Backup Configuration Section Header
+        backup_header_frame = tk.Frame(backup_content, bg=self.colors['surface'])
+        backup_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(backup_header_frame, text="Configure Backup Options",
+                font=('Segoe UI', 11, 'bold'),
+                fg=self.colors['text_light'],
+                bg=self.colors['surface']).pack(anchor=tk.W)
+        
+        # Backup checkboxes
+        backup_checkboxes_frame = tk.Frame(backup_content, bg=self.colors['surface'])
+        backup_checkboxes_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        settings_vars['backup_travel_data'] = tk.BooleanVar(value=self.validation_settings.get('backup_travel_data', True))
+        tk.Checkbutton(backup_checkboxes_frame, text="Travel Data",
+                      variable=settings_vars['backup_travel_data'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
+        
+        settings_vars['backup_config'] = tk.BooleanVar(value=self.validation_settings.get('backup_config', True))
+        tk.Checkbutton(backup_checkboxes_frame, text="Settings",
+                      variable=settings_vars['backup_config'],
+                      bg=self.colors['surface'],
+                      font=('Segoe UI', 11)).pack(anchor=tk.W, pady=(0, 5))
+        
+        # Backup directory setting
+        backup_directory_frame = tk.Frame(backup_content, bg=self.colors['surface'])
+        backup_directory_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        tk.Label(backup_directory_frame, text="Backup Directory:",
+                font=('Segoe UI', 11),
+                fg=self.colors['text'],
+                bg=self.colors['surface']).pack(anchor=tk.W, pady=(0, 5))
+        
+        backup_directory_entry_frame = tk.Frame(backup_directory_frame, bg=self.colors['surface'])
+        backup_directory_entry_frame.pack(fill=tk.X)
+        
+        settings_vars['backup_directory'] = tk.StringVar(value=self.validation_settings.get('backup_directory', self.get_default_backup_directory()))
+        backup_directory_entry = tk.Entry(backup_directory_entry_frame, textvariable=settings_vars['backup_directory'],
+                                         font=('Segoe UI', 10))
+        backup_directory_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
+        def browse_backup_directory():
+            """Browse for backup directory"""
+            current_dir = settings_vars['backup_directory'].get()
+            if not os.path.exists(current_dir):
+                current_dir = str(Path.home())
+            
+            new_dir = filedialog.askdirectory(
+                title="Select Backup Directory",
+                initialdir=current_dir
+            )
+            
+            if new_dir:
+                settings_vars['backup_directory'].set(new_dir)
+        
+        backup_browse_btn = tk.Button(backup_directory_entry_frame, text="Browse...",
+                                     bg=self.colors['primary'], fg='white',
+                                     font=('Segoe UI', 10, 'bold'),
+                                     relief='flat', bd=0, padx=12, pady=6,
+                                     command=browse_backup_directory)
+        backup_browse_btn.pack(side=tk.RIGHT)
+        
+        # Backup button
+        backup_button_frame = tk.Frame(backup_content, bg=self.colors['surface'])
+        backup_button_frame.pack(fill=tk.X, pady=(20, 0))
+        
+        def perform_backup_action():
+            """Perform backup based on settings"""
+            backup_travel_data = settings_vars['backup_travel_data'].get()
+            backup_config = settings_vars['backup_config'].get()
+            backup_directory = settings_vars['backup_directory'].get()
+            
+            self.perform_backup(backup_travel_data, backup_config, backup_directory)
+        
+        backup_btn = tk.Button(backup_button_frame, text="🔄 Backup",
+                              bg=self.colors['danger'], fg='white',
+                              font=('Segoe UI', 11, 'bold'),
+                              relief='flat', bd=0, padx=20, pady=10,
+                              command=perform_backup_action)
+        backup_btn.pack()
+        
         # ========== VALIDATION TAB (moved to last) ==========
         validation_tab = tk.Frame(notebook, bg=self.colors['surface'])
         notebook.add(validation_tab, text="Validation")
@@ -1918,6 +2093,11 @@ class ModernTravelCalendar:
                     self.validation_settings['export_delimiter'] = ','
                 
                 self.validation_settings['export_directory'] = settings_vars['export_directory'].get()
+                
+                # Update backup settings (NEW)
+                self.validation_settings['backup_travel_data'] = settings_vars['backup_travel_data'].get()
+                self.validation_settings['backup_config'] = settings_vars['backup_config'].get()
+                self.validation_settings['backup_directory'] = settings_vars['backup_directory'].get()
                 
                 # Save settings to config file
                 self.save_config()
