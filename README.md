@@ -112,6 +112,11 @@ Access the settings through **View → Settings** to customize:
 - Today's date color selection
 - Maximum location and notes length
 
+### ✅ **Validation Tab**
+- Overlapping dates policy
+- Future/past date warnings
+- Date range limitations
+
 ### 📋 **Report Tab**
 - Report date format preference
 - Default status toggle settings
@@ -122,10 +127,10 @@ Access the settings through **View → Settings** to customize:
 - Delimiter options for CSV/TXT
 - Default export directory
 
-### ✅ **Validation Tab**
-- Overlapping dates policy
-- Future/past date warnings
-- Date range limitations
+### 💾 **Backup Tab**
+- Backup travel data and settings
+- Choose what to back up
+- Set backup directory
 
 ## 🗂️ Data Storage
 
