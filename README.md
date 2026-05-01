@@ -74,5 +74,5 @@ Access the **Settings** menu (Ctrl+S) to personalize your experience:
 > **Pro Tip**: To keep your data safe, use the **Backup** tab in Settings to save a copy of your travel history to your Documents or a cloud-synced folder!
 
 ## License
-This project is licensed under GNU GENERAL PUBLIC LICENSE - see the LICENSE file for details.
+This project is licensed under GNU GENERAL PUBLIC LICENSE - see the LICENSE file for details. |
 Developed by Jack Worthen
